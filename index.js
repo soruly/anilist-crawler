@@ -2,16 +2,12 @@
 
 let Crawler = require('crawler');
 let request = require('request');
-let fetch = require('node-fetch');
-let FormData = require('form-data');
 let config = require('./config');
-let loginForm = new FormData();
-loginForm.append('grant_type', 'client_credentials');
-loginForm.append('client_id', config.client_id);
-loginForm.append('client_secret', config.client_secret);
+
+var access_token = '';
 
 const api_prefix = 'https://anilist.co/api/';
-let access_token = '';
+const db_store = 'http://127.0.0.1:9200/';
 
 let crawler = new Crawler({
   maxConnections: 10,
@@ -20,8 +16,8 @@ let crawler = new Crawler({
   retryTimeout: 5000,
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36',
   onDrain: () => {
-    console.log("Not more jobs on queue, exit");
-    process.exit();
+    console.log("No more jobs on queue, exit");
+    //process.exit();
   },
   callback: (error, result) => {
     console.error(error);
@@ -29,22 +25,39 @@ let crawler = new Crawler({
   }
 });
 
-let getAccessToken = fetch(`${api_prefix}auth/access_token`, {
-  method: 'POST',
-  body: loginForm
-}).then((response) => {
-  return response.json();
-}).then((res) => {
-  access_token = res.access_token;
+let getAccessToken = (callback) => {
+  request({
+    method: 'POST',
+    url: `${api_prefix}auth/access_token`,
+    json: true,
+    form: {
+      grant_type: "client_credentials",
+      client_id: config.client_id,
+      client_secret: config.client_secret
+    }
+  }, function(error, res, body) {
+    if (!error && res.statusCode == 200 && res.body.access_token) {
+      access_token = res.body.access_token;
+      console.log(access_token);
+      if (callback) {
+        callback();
+      }
+      setTimeout(getAccessToken, (res.body.expires_in - 300) * 1000);
+    } else {
+      console.log('login failed');
+    }
+  });
+};
+
+getAccessToken(() => {
+  browse(240, 10);
 });
-
-
 
 let staffList = [];
 let characterList = [];
+let animeList = [];
 
 let browse = (startPage, numOfPage) => {
-  let animeList = [];
   for (let page = startPage; page <= startPage + numOfPage; page++) {
     crawler.queue({
       uri: `${api_prefix}browse/anime?sort=id&page=${page}&access_token=${access_token}`,
@@ -70,7 +83,7 @@ let browse = (startPage, numOfPage) => {
       }
     });
   }
-}
+};
 
 
 let fetchAnime = (id) => {
@@ -80,6 +93,7 @@ let fetchAnime = (id) => {
     jQuery: false,
     callback: function(error, result) {
       let anime = JSON.parse(result.body);
+      storeData(anime, 'anilist', 'anime', anime.id);
       console.log(`Anime ${id} (${anime.title_japanese}) finished`);
       if (anime.staff) {
         anime.staff.forEach((staff) => {
@@ -107,7 +121,7 @@ let fetchAnime = (id) => {
       }
     }
   });
-}
+};
 
 let fetchStaff = (id) => {
   crawler.queue({
@@ -115,10 +129,11 @@ let fetchStaff = (id) => {
     jQuery: false,
     callback: function(error, result) {
       let staff = JSON.parse(result.body);
+      storeData(staff, 'anilist', 'staff', staff.id);
       console.log(`Staff ${id} (${staff.name_first_japanese}${staff.name_last_japanese}) finished`);
     }
   });
-}
+};
 
 let fetchCharacter = (id) => {
   crawler.queue({
@@ -126,15 +141,24 @@ let fetchCharacter = (id) => {
     jQuery: false,
     callback: function(error, result) {
       let character = JSON.parse(result.body);
+      storeData(character, 'anilist', 'character', character.id);
       console.log(`Character ${id} (${character.name_japanese}) finished`);
     }
   });
-}
+};
 
-getAccessToken.then(() => {
-  browse(240, 10);
-});
+let storeData = (data, index, type, id) => {
+  let dataPath = `${db_store}${index}/${type}/${id}`;
+  request({
+    method: 'PUT',
+    url: dataPath,
+    json: data
+  }, function(error, response, newdata) {
+    if (response.statusCode < 400) {
+      console.log(`Stored anime ${data.id} (${data.title_japanese})`);
+    } else {
+      console.error(error, response, data);
+    }
+  });
 
-setInterval(() => {
-  console.log(`${crawler.queueItemSize} jobs remaining`);
-}, 1000);
+};
