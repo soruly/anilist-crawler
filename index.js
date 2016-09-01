@@ -17,7 +17,7 @@ let crawler = new Crawler({
   userAgent: 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36',
   onDrain: () => {
     console.log("No more jobs on queue, exit");
-    //process.exit();
+    process.exit();
   },
   callback: (error, result) => {
     console.error(error);
