@@ -38,7 +38,7 @@ let getAccessToken = (callback) => {
   }, function(error, res, body) {
     if (!error && res.statusCode == 200 && res.body.access_token) {
       access_token = res.body.access_token;
-      console.log(access_token);
+      console.log(`Renew access token ${access_token}`);
       if (callback) {
         callback();
       }
@@ -48,10 +48,6 @@ let getAccessToken = (callback) => {
     }
   });
 };
-
-getAccessToken(() => {
-  browse(240, 10);
-});
 
 let staffList = [];
 let characterList = [];
@@ -92,8 +88,9 @@ let fetchAnime = (id) => {
     jQuery: false,
     callback: function(error, result) {
       let anime = JSON.parse(result.body);
+      delete anime.airing_stats;
       storeData(anime, 'anilist', 'anime', anime.id);
-      console.log(`Anime ${id} (${anime.title_japanese}) finished`);
+      console.log(`Anime ${id} finished (${anime.title_japanese})`);
       if (anime.staff) {
         anime.staff.forEach((staff) => {
           if (staffList.indexOf(staff.id) === -1) {
@@ -127,7 +124,7 @@ let fetchStaff = (id) => {
     callback: function(error, result) {
       let staff = JSON.parse(result.body);
       storeData(staff, 'anilist', 'staff', staff.id);
-      console.log(`Staff ${id} (${staff.name_first_japanese}${staff.name_last_japanese}) finished`);
+      console.log(`Staff ${id} finished (${staff.name_first_japanese}${staff.name_last_japanese})`);
     }
   });
 };
@@ -139,23 +136,27 @@ let fetchCharacter = (id) => {
     callback: function(error, result) {
       let character = JSON.parse(result.body);
       storeData(character, 'anilist', 'character', character.id);
-      console.log(`Character ${id} (${character.name_japanese}) finished`);
+      console.log(`Character ${id} finished (${character.name_japanese})`);
     }
   });
 };
 
 let storeData = (data, index, type, id) => {
   let dataPath = `${db_store}${index}/${type}/${id}`;
+
   request({
     method: 'PUT',
     url: dataPath,
     json: data
   }, function(error, response, newdata) {
     if (response.statusCode < 400) {
-      console.log(`Stored anime ${data.id} (${data.title_japanese})`);
+      console.log(`Stored ${type} ${data.id}`);
     } else {
-      console.error(error, response, data);
+      console.error(response.body);
     }
   });
-
 };
+
+getAccessToken(() => {
+  browse(200, 10);
+});
