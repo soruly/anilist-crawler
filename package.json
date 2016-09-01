@@ -1,0 +1,24 @@
+{
+  "name": "anilist-crawler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soruly/anilist-crawler.git"
+  },
+  "author": "soruly",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/soruly/anilist-crawler/issues"
+  },
+  "homepage": "https://github.com/soruly/anilist-crawler#readme",
+  "dependencies": {
+    "crawler": "^0.4.3",
+    "form-data": "^1.0.1",
+    "node-fetch": "^1.6.0"
+  }
+}
