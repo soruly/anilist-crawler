@@ -75,7 +75,6 @@ let browse = (startPage, numOfPage) => {
           browse(page + 1, numOfPage);
         }
         if (crawler.queueItemSize <= 1) {
-          animeList.sort();
           animeList.forEach((id) => {
             fetchAnime(id);
           });
@@ -110,11 +109,9 @@ let fetchAnime = (id) => {
         })
       }
       if (crawler.queueItemSize <= 1) {
-        staffList.sort;
         staffList.forEach((id) => {
           fetchStaff(id);
         });
-        characterList.sort();
         characterList.forEach((id) => {
           fetchCharacter(id);
         });
