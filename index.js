@@ -158,5 +158,5 @@ let storeData = (data, index, type, id) => {
 };
 
 getAccessToken(() => {
-  browse(200, 10);
+  browse(220, 10);
 });
