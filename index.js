@@ -14,7 +14,7 @@ let access_token = '';
 let access_token_expire = 0;
 
 let getAccessToken = () => new Promise(function(resolve, reject) {
-  if (access_token && access_token_expire - Math.floor(new Date().getTime() / 1000) > 60) {
+  if (access_token && access_token_expire - Math.floor(new Date().getTime() / 1000) > 300) {
     resolve(access_token);
   } else {
     console.log(`Renewing access_token`);
@@ -42,7 +42,7 @@ let getAccessToken = () => new Promise(function(resolve, reject) {
 });
 
 let fetchData = (type, id) => new Promise(function(resolve, reject) {
-  console.log(`Fetching ${type} ${id}`);
+  //console.log(`Fetching ${type} ${id}`);
   getAccessToken().then(access_token => {
     request({
       method: 'GET',
@@ -51,7 +51,7 @@ let fetchData = (type, id) => new Promise(function(resolve, reject) {
     }, function(error, response, data) {
       if (!error && response.statusCode == 200) {
         resolve(data);
-        console.log(`Fetched ${type} ${id}`);
+        //console.log(`Fetched ${type} ${id}`);
       } else {
         reject(Error(error));
       }
@@ -60,7 +60,7 @@ let fetchData = (type, id) => new Promise(function(resolve, reject) {
 });
 
 let storeData = (data, index, type, id) => new Promise(function(resolve, reject) {
-  console.log(`Storing ${type} ${data.id}`);
+  //console.log(`Storing ${type} ${data.id}`);
   let dataPath = `${db_store}${index}/${type}/${id}`;
   request({
     method: 'PUT',
@@ -69,7 +69,7 @@ let storeData = (data, index, type, id) => new Promise(function(resolve, reject)
   }, function(error, response, body) {
     if (!error && response.statusCode < 400) {
       resolve();
-      console.log(`Stored ${type} ${data.id}`);
+      //console.log(`Stored ${type} ${data.id}`);
     } else {
       reject(Error(error));
     }
