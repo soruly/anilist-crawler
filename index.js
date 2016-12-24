@@ -1,162 +1,134 @@
 "use strict";
 
-let Crawler = require('crawler');
 let request = require('request');
 let config = require('./config');
 
-var access_token = '';
+const api_prefix = config.api_prefix;
+const db_store = config.db_store;
+const db_name = config.db_name; //elasticsearch index name
+const user_agent = config.user_agent;
+const client_id = config.client_id;
+const client_secret = config.client_secret;
 
-const api_prefix = 'https://anilist.co/api/';
-const db_store = 'http://127.0.0.1:9200/';
+let access_token = '';
+let access_token_expire = 0;
 
-let crawler = new Crawler({
-  maxConnections: 10,
-  timeout: 5000,
-  retries: 3,
-  retryTimeout: 5000,
-  userAgent: 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36',
-  onDrain: () => {
-    console.log("No more jobs on queue, exit");
-    process.exit();
-  },
-  callback: (error, result) => {
-    console.error(error);
-    console.log(result);
-  }
-});
-
-let getAccessToken = (callback) => {
-  request({
-    method: 'POST',
-    url: `${api_prefix}auth/access_token`,
-    json: true,
-    form: {
-      grant_type: "client_credentials",
-      client_id: config.client_id,
-      client_secret: config.client_secret
-    }
-  }, function(error, res, body) {
-    if (!error && res.statusCode == 200 && res.body.access_token) {
-      access_token = res.body.access_token;
-      console.log(`Renew access token ${access_token}`);
-      if (callback) {
-        callback();
+let getAccessToken = () => new Promise(function(resolve, reject) {
+  if (access_token && access_token_expire - Math.floor(new Date().getTime() / 1000) > 60) {
+    resolve(access_token);
+  } else {
+    console.log(`Renewing access_token`);
+    request({
+      method: 'POST',
+      url: `${api_prefix}auth/access_token`,
+      json: true,
+      form: {
+        grant_type: 'client_credentials',
+        client_id: client_id,
+        client_secret: client_secret
       }
-      setTimeout(getAccessToken, (res.body.expires_in - 300) * 1000);
-    } else {
-      console.log('login failed');
-    }
-  });
-};
-
-let staffList = [];
-let characterList = [];
-let animeList = [];
-
-let browse = (startPage, numOfPage) => {
-  for (let page = startPage; page <= startPage + numOfPage; page++) {
-    crawler.queue({
-      uri: `${api_prefix}browse/anime?sort=id&page=${page}&access_token=${access_token}`,
-      priority: 1,
-      jQuery: false,
-      callback: function(error, result) {
-        console.log(`Page ${page} finished`);
-        let res = JSON.parse(result.body);
-        res.forEach((anime) => {
-          if (animeList.indexOf(anime.id) === -1) {
-            animeList.push(anime.id);
-          }
-        });
-        if (page === startPage + numOfPage && res.length >= 40) {
-          browse(page + 1, numOfPage);
-        }
-        if (crawler.queueItemSize <= 1) {
-          animeList.forEach((id) => {
-            fetchAnime(id);
-          });
-        }
+    }, function(error, response, body) {
+      if (!error && response.statusCode == 200) {
+        access_token = body.access_token;
+        access_token_expire = body.expires;
+        let expireDateTime = new Date(access_token_expire * 1000).toISOString();
+        console.log(`Renewed access_token ${access_token} (valid until ${expireDateTime})`);
+        resolve(access_token);
+      } else {
+        reject(Error(error));
       }
     });
   }
-};
+});
 
-
-let fetchAnime = (id) => {
-  crawler.queue({
-    uri: `${api_prefix}anime/${id}/page?access_token=${access_token}`,
-    priority: 2,
-    jQuery: false,
-    callback: function(error, result) {
-      let anime = JSON.parse(result.body);
-      delete anime.airing_stats;
-      storeData(anime, 'anilist', 'anime', anime.id);
-      console.log(`Anime ${id} finished (${anime.title_japanese})`);
-      if (anime.staff) {
-        anime.staff.forEach((staff) => {
-          if (staffList.indexOf(staff.id) === -1) {
-            staffList.push(staff.id);
-          }
-        })
+let fetchData = (type, id) => new Promise(function(resolve, reject) {
+  console.log(`Fetching ${type} ${id}`);
+  getAccessToken().then(access_token => {
+    request({
+      method: 'GET',
+      url: `${api_prefix}${type}/${id}/page?access_token=${access_token}`,
+      json: true,
+    }, function(error, response, data) {
+      if (!error && response.statusCode == 200) {
+        resolve(data);
+        console.log(`Fetched ${type} ${id}`);
+      } else {
+        reject(Error(error));
       }
-      if (anime.characters) {
-        anime.characters.forEach((character) => {
-          if (characterList.indexOf(character.id) === -1) {
-            characterList.push(character.id);
-          }
-        })
-      }
-      if (crawler.queueItemSize <= 1) {
-        staffList.forEach((id) => {
-          fetchStaff(id);
-        });
-        characterList.forEach((id) => {
-          fetchCharacter(id);
-        });
-      }
-    }
+    })
   });
-};
+});
 
-let fetchStaff = (id) => {
-  crawler.queue({
-    uri: `${api_prefix}staff/${id}?access_token=${access_token}`,
-    jQuery: false,
-    callback: function(error, result) {
-      let staff = JSON.parse(result.body);
-      storeData(staff, 'anilist', 'staff', staff.id);
-      console.log(`Staff ${id} finished (${staff.name_first_japanese}${staff.name_last_japanese})`);
-    }
-  });
-};
-
-let fetchCharacter = (id) => {
-  crawler.queue({
-    uri: `${api_prefix}character/${id}?access_token=${access_token}`,
-    jQuery: false,
-    callback: function(error, result) {
-      let character = JSON.parse(result.body);
-      storeData(character, 'anilist', 'character', character.id);
-      console.log(`Character ${id} finished (${character.name_japanese})`);
-    }
-  });
-};
-
-let storeData = (data, index, type, id) => {
+let storeData = (data, index, type, id) => new Promise(function(resolve, reject) {
+  console.log(`Storing ${type} ${data.id}`);
   let dataPath = `${db_store}${index}/${type}/${id}`;
-
   request({
     method: 'PUT',
     url: dataPath,
     json: data
-  }, function(error, response, newdata) {
-    if (response.statusCode < 400) {
+  }, function(error, response, body) {
+    if (!error && response.statusCode < 400) {
+      resolve();
       console.log(`Stored ${type} ${data.id}`);
     } else {
-      console.error(response.body);
+      reject(Error(error));
     }
   });
-};
+});
 
-getAccessToken(() => {
-  browse(220, 10);
+let fetchAnime = id => new Promise(function(resolve, reject) {
+  console.log(`Crawling anime ${id}`);
+  fetchData('anime', id)
+    .then(anime =>
+      Promise.all([
+        storeData(anime, db_name, 'anime', anime.id),
+
+        Promise.all(
+          anime.characters.map(character => character.id)
+          .filter((elem, index, self) => index == self.indexOf(elem))
+          .map(id => fetchData('character', id)
+            .then(character => storeData(character, db_name, 'character', character.id))
+          )
+        ),
+
+        Promise.all(
+          anime.staff.map(staff => staff.id).concat(anime.characters.filter(character => character.actor[0]).map(character => character.actor[0].id))
+          .filter((elem, index, self) => index == self.indexOf(elem))
+          .map(id => fetchData('staff', id)
+            .then(staff => storeData(staff, db_name, 'staff', staff.id))
+          )
+        )
+      ])
+    )
+    .then(() => {
+      console.log(`Completed anime ${id}`);
+      resolve();
+    });
+});
+
+let fetchPage = (start, end) => new Promise(function(resolve, reject) {
+  console.log(`Fetching page ${start}`);
+  getAccessToken().then(access_token => {
+    request({
+      method: 'GET',
+      url: `${api_prefix}browse/anime?sort=id&page=${start}&access_token=${access_token}`,
+      json: true,
+    }, function(error, response, data) {
+      console.log(`Fetched page ${start}`);
+      resolve(data.map(anime => anime.id));
+    });
+  });
+});
+
+let args = process.argv.slice(2);
+
+args.forEach((value, index) => {
+  if (value === '--anime') {
+    fetchAnime(args[index + 1]);
+  }
+  if (value === '--page') {
+    fetchPage(args[index + 1]).then(ids =>
+      ids.reduce((result, id) => result.then(() => fetchAnime(id)), Promise.resolve())
+    );
+  }
 });
