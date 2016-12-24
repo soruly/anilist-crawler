@@ -17,6 +17,8 @@ Modify `config.js` to fill in your client_id and client_secret (get one from htt
 
 `node index.js --page [pageNumber]`
 
+`node index.js --all`
+
 For details of the API please visit https://github.com/joshstar/AniList-API-Docs
 
 ## Notes

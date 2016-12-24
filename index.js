@@ -120,6 +120,17 @@ let fetchPage = (start, end) => new Promise(function(resolve, reject) {
   });
 });
 
+let getLastPage = (last_page) => new Promise(function(resolve, reject) {
+  fetchPage(last_page).then(ids => {
+    if (ids.length < 40) {
+      console.log(`The last page is ${last_page}`);
+      resolve(last_page);
+    } else {
+      resolve(getLastPage(last_page + 1));
+    }
+  });
+});
+
 let args = process.argv.slice(2);
 
 args.forEach((value, index) => {
@@ -130,5 +141,16 @@ args.forEach((value, index) => {
     fetchPage(args[index + 1]).then(ids =>
       ids.reduce((result, id) => result.then(() => fetchAnime(id)), Promise.resolve())
     );
+  }
+  if (value === '--all') {
+    getLastPage(248)
+      .then(last_page => Array.from(new Array(last_page), (val, index) => index + 1))
+      .then(pages => 
+        pages.reduce((result, page) => result.then(() => fetchPage(page)
+          .then(ids =>
+            ids.reduce((result, id) => result.then(() => fetchAnime(id)), Promise.resolve())
+          )
+        ), Promise.resolve())
+      );
   }
 });
