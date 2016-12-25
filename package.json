@@ -17,6 +17,6 @@
   },
   "homepage": "https://github.com/soruly/anilist-crawler#readme",
   "dependencies": {
-    "request": "^2.79.0"
+    "requestretry": "^1.12.0"
   }
 }

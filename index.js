@@ -1,6 +1,6 @@
 "use strict";
 
-let request = require('request');
+let request = require('requestretry');
 let config = require('./config');
 
 const api_prefix = config.api_prefix;
@@ -48,11 +48,16 @@ let fetchData = (type, id) => new Promise(function(resolve, reject) {
       method: 'GET',
       url: `${api_prefix}${type}/${id}/page?access_token=${access_token}`,
       json: true,
+      maxAttempts: 5,
+      retryDelay: 5000,
+      retryStrategy: request.RetryStrategies.HTTPOrNetworkError
     }, function(error, response, data) {
       if (!error && response.statusCode == 200) {
         resolve(data);
         //console.log(`Fetched ${type} ${id}`);
       } else {
+        console.log(error);
+        console.log(response);
         reject(Error(error));
       }
     })
@@ -71,6 +76,8 @@ let storeData = (data, index, type, id) => new Promise(function(resolve, reject)
       resolve();
       //console.log(`Stored ${type} ${data.id}`);
     } else {
+      console.log(error);
+      console.log(response);
       reject(Error(error));
     }
   });
