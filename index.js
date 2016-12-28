@@ -73,7 +73,7 @@ let storeData = (data, index, type, id) => new Promise(function(resolve, reject)
     json: data
   }, function(error, response, body) {
     if (!error && response.statusCode < 400) {
-      resolve();
+      resolve(data);
       //console.log(`Stored ${type} ${data.id}`);
     } else {
       console.log(error);
@@ -107,8 +107,8 @@ let fetchAnime = id => new Promise(function(resolve, reject) {
         )
       ])
     )
-    .then(() => {
-      console.log(`Completed anime ${id}`);
+    .then((anime) => {
+      console.log(`Completed anime ${id} (${anime[0].title_japanese})`);
       resolve();
     });
 });
@@ -150,7 +150,7 @@ args.forEach((value, index) => {
     );
   }
   if (value === '--all') {
-    getLastPage(248)
+    getLastPage(249)
       .then(last_page => Array.from(new Array(last_page), (val, index) => index + 1))
       .then(pages => 
         pages.reduce((result, page) => result.then(() => fetchPage(page)
