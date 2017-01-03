@@ -140,20 +140,26 @@ let getLastPage = (last_page) => new Promise(function(resolve, reject) {
 
 let args = process.argv.slice(2);
 
-args.forEach((value, index) => {
-  if (value === '--anime') {
-    fetchAnime(args[index + 1]);
+args.forEach((param, index) => {
+  let value = args[index + 1];
+  if (param === '--anime') {
+    let animeID = parseInt(value, 10);
+    fetchAnime(animeID);
   }
-  if (value === '--page') {
-    fetchPage(args[index + 1]).then(ids =>
-      ids.reduce((result, id) => result.then(() => fetchAnime(id)), Promise.resolve())
-    );
-  }
-  if (value === '--all') {
+  if (param === '--page') {
+    let format = /^(\d+)(-)?(\d+)?$/
+    let startPage = parseInt(value.match(format)[1]);
+    let fetchToEnd = value.match(format)[2] === '-';
+    let endPage = fetchToEnd ? parseInt(value.match(format)[3]) : startPage;
+    
     getLastPage(249)
-      .then(last_page => Array.from(new Array(last_page), (val, index) => index + 1))
+      .then(last_page => (endPage < last_page ? endPage : last_page))
+      .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
+                              .slice(startPage, last_page + 1)
+      )
       .then(pages => 
-        pages.reduce((result, page) => result.then(() => fetchPage(page)
+        pages
+          .reduce((result, page) => result.then(() => fetchPage(page)
           .then(ids =>
             ids.reduce((result, id) => result.then(() => fetchAnime(id)), Promise.resolve())
           )
