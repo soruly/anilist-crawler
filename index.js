@@ -155,15 +155,15 @@ args.forEach((param, index) => {
     let startPage = parseInt(value.match(format)[1]);
     let fetchToEnd = value.match(format)[2] === '-';
     let endPage = fetchToEnd ? parseInt(value.match(format)[3]) : startPage;
-    
+
     getLastPage(249)
       .then(last_page => (endPage < last_page ? endPage : last_page))
       .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
-                              .slice(startPage, last_page + 1)
+        .slice(startPage, last_page + 1)
       )
-      .then(pages => 
+      .then(pages =>
         pages
-          .reduce((result, page) => result.then(() => fetchPage(page)
+        .reduce((result, page) => result.then(() => fetchPage(page)
           .then(ids =>
             ids.reduce((result, id) => result.then(() => fetchAnime(id)), Promise.resolve())
           )
