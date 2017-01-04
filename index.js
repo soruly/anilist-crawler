@@ -13,7 +13,7 @@ const client_secret = config.client_secret;
 let access_token = '';
 let access_token_expire = 0;
 
-let getAccessToken = () => new Promise(function(resolve, reject) {
+let getAccessToken = () => new Promise((resolve, reject) => {
   if (access_token && access_token_expire - Math.floor(new Date().getTime() / 1000) > 300) {
     resolve(access_token);
   } else {
@@ -27,7 +27,7 @@ let getAccessToken = () => new Promise(function(resolve, reject) {
         client_id: client_id,
         client_secret: client_secret
       }
-    }, function(error, response, body) {
+    }, (error, response, body) => {
       if (!error && response.statusCode == 200) {
         access_token = body.access_token;
         access_token_expire = body.expires;
@@ -41,7 +41,7 @@ let getAccessToken = () => new Promise(function(resolve, reject) {
   }
 });
 
-let fetchData = (type, id) => new Promise(function(resolve, reject) {
+let fetchData = (type, id) => new Promise((resolve, reject) => {
   //console.log(`Fetching ${type} ${id}`);
   getAccessToken().then(access_token => {
     request({
@@ -51,7 +51,7 @@ let fetchData = (type, id) => new Promise(function(resolve, reject) {
       maxAttempts: 5,
       retryDelay: 5000,
       retryStrategy: request.RetryStrategies.HTTPOrNetworkError
-    }, function(error, response, data) {
+    }, (error, response, data) => {
       if (!error && response.statusCode == 200) {
         resolve(data);
         //console.log(`Fetched ${type} ${id}`);
@@ -64,14 +64,14 @@ let fetchData = (type, id) => new Promise(function(resolve, reject) {
   });
 });
 
-let storeData = (data, index, type, id) => new Promise(function(resolve, reject) {
+let storeData = (data, index, type, id) => new Promise((resolve, reject) => {
   //console.log(`Storing ${type} ${data.id}`);
   let dataPath = `${db_store}${index}/${type}/${id}`;
   request({
     method: 'PUT',
     url: dataPath,
     json: data
-  }, function(error, response, body) {
+  }, (error, response, body) => {
     if (!error && response.statusCode < 400) {
       resolve(data);
       //console.log(`Stored ${type} ${data.id}`);
@@ -83,7 +83,7 @@ let storeData = (data, index, type, id) => new Promise(function(resolve, reject)
   });
 });
 
-let fetchAnime = id => new Promise(function(resolve, reject) {
+let fetchAnime = id => new Promise((resolve, reject) => {
   console.log(`Crawling anime ${id}`);
   fetchData('anime', id)
     .then(anime =>
@@ -99,7 +99,11 @@ let fetchAnime = id => new Promise(function(resolve, reject) {
         ),
 
         Promise.all(
-          anime.staff.map(staff => staff.id).concat(anime.characters.filter(character => character.actor[0]).map(character => character.actor[0].id))
+          anime.staff.map(staff => staff.id).concat(
+            anime.characters
+            .filter(character => character.actor[0])
+            .map(character => character.actor[0].id)
+          )
           .filter((elem, index, self) => index == self.indexOf(elem))
           .map(id => fetchData('staff', id)
             .then(staff => storeData(staff, db_name, 'staff', staff.id))
@@ -113,21 +117,21 @@ let fetchAnime = id => new Promise(function(resolve, reject) {
     });
 });
 
-let fetchPage = (start, end) => new Promise(function(resolve, reject) {
+let fetchPage = (start, end) => new Promise((resolve, reject) => {
   console.log(`Fetching page ${start}`);
   getAccessToken().then(access_token => {
     request({
       method: 'GET',
       url: `${api_prefix}browse/anime?sort=id&page=${start}&access_token=${access_token}`,
       json: true,
-    }, function(error, response, data) {
+    }, (error, response, data) => {
       console.log(`Fetched page ${start}`);
       resolve(data.map(anime => anime.id));
     });
   });
 });
 
-let getLastPage = (last_page) => new Promise(function(resolve, reject) {
+let getLastPage = (last_page) => new Promise((resolve, reject) => {
   fetchPage(last_page).then(ids => {
     if (ids.length < 40) {
       console.log(`The last page is ${last_page}`);
