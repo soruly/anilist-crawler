@@ -1,11 +1,11 @@
-"use strict";
+'use strict';
 
 let request = require('requestretry');
 let config = require('./config');
 
 const api_prefix = config.api_prefix;
 const db_store = config.db_store;
-const db_name = config.db_name; //elasticsearch index name
+const db_name = config.db_name; // elasticsearch index name
 const user_agent = config.user_agent;
 const client_id = config.client_id;
 const client_secret = config.client_secret;
@@ -28,7 +28,7 @@ let getAccessToken = () => new Promise((resolve, reject) => {
         client_secret: client_secret
       }
     }, (error, response, body) => {
-      if (!error && response.statusCode == 200) {
+      if (!error && response.statusCode === 200) {
         access_token = body.access_token;
         access_token_expire = body.expires;
         let expireDateTime = new Date(access_token_expire * 1000).toISOString();
@@ -42,7 +42,7 @@ let getAccessToken = () => new Promise((resolve, reject) => {
 });
 
 let fetchData = (type, id) => new Promise((resolve, reject) => {
-  //console.log(`Fetching ${type} ${id}`);
+  // console.log(`Fetching ${type} ${id}`);
   getAccessToken().then(access_token => {
     request({
       method: 'GET',
@@ -52,20 +52,20 @@ let fetchData = (type, id) => new Promise((resolve, reject) => {
       retryDelay: 5000,
       retryStrategy: request.RetryStrategies.HTTPOrNetworkError
     }, (error, response, data) => {
-      if (!error && response.statusCode == 200) {
+      if (!error && response.statusCode === 200) {
         resolve(data);
-        //console.log(`Fetched ${type} ${id}`);
+        // console.log(`Fetched ${type} ${id}`);
       } else {
         console.log(error);
         console.log(response);
         reject(Error(error));
       }
-    })
+    });
   });
 });
 
 let storeData = (data, index, type, id) => new Promise((resolve, reject) => {
-  //console.log(`Storing ${type} ${data.id}`);
+  // console.log(`Storing ${type} ${data.id}`);
   let dataPath = `${db_store}${index}/${type}/${id}`;
   request({
     method: 'PUT',
@@ -74,7 +74,7 @@ let storeData = (data, index, type, id) => new Promise((resolve, reject) => {
   }, (error, response, body) => {
     if (!error && response.statusCode < 400) {
       resolve(data);
-      //console.log(`Stored ${type} ${data.id}`);
+      // console.log(`Stored ${type} ${data.id}`);
     } else {
       console.log(error);
       console.log(response);
@@ -92,7 +92,7 @@ let fetchAnime = id => new Promise((resolve, reject) => {
 
         Promise.all(
           anime.characters.map(character => character.id)
-          .filter((elem, index, self) => index == self.indexOf(elem))
+          .filter((elem, index, self) => index === self.indexOf(elem))
           .map(id => fetchData('character', id)
             .then(character => storeData(character, db_name, 'character', character.id))
           )
@@ -104,7 +104,7 @@ let fetchAnime = id => new Promise((resolve, reject) => {
             .filter(character => character.actor[0])
             .map(character => character.actor[0].id)
           )
-          .filter((elem, index, self) => index == self.indexOf(elem))
+          .filter((elem, index, self) => index === self.indexOf(elem))
           .map(id => fetchData('staff', id)
             .then(staff => storeData(staff, db_name, 'staff', staff.id))
           )
@@ -123,7 +123,7 @@ let fetchPage = (start, end) => new Promise((resolve, reject) => {
     request({
       method: 'GET',
       url: `${api_prefix}browse/anime?sort=id&page=${start}&access_token=${access_token}`,
-      json: true,
+      json: true
     }, (error, response, data) => {
       console.log(`Fetched page ${start}`);
       resolve(data.map(anime => anime.id));
@@ -151,7 +151,7 @@ args.forEach((param, index) => {
     fetchAnime(animeID);
   }
   if (param === '--page') {
-    let format = /^(\d+)(-)?(\d+)?$/
+    let format = /^(\d+)(-)?(\d+)?$/;
     let startPage = parseInt(value.match(format)[1]);
     let fetchToEnd = value.match(format)[2] === '-';
     let endPage = fetchToEnd ? parseInt(value.match(format)[3]) : startPage;
