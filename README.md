@@ -1,4 +1,6 @@
 # anilist-crawler
+[![](https://david-dm.org/soruly/anilist-crawler/status.svg)](https://david-dm.org/soruly/anilist-crawler)
+
 Crawl data from anilist API and store in elasticsearch.
 
 ## Data collected
