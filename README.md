@@ -41,6 +41,10 @@ Fetch all anime from page 240 to the last page
 `node index.js --page 240-`
 
 
+Find anime that has been deleted on anilist, but have not been deleted locally in elasticsearch
+
+`node index.js --cleanup`
+
 For details of the API please visit https://github.com/joshstar/AniList-API-Docs
 
 ## Notes
