@@ -142,6 +142,38 @@ let getLastPage = (last_page) => new Promise((resolve, reject) => {
   });
 });
 
+let getAnimeIDs = (from, size) => {
+  return new Promise((resolve, reject) => {
+    let animeList = [];
+    request({
+      method: 'POST',
+      url: `${db_store}anilist/anime/_search`,
+      json: {
+        "from": from,
+        "size": size,
+        "stored_fields": ["id"],
+        "query": {
+          "match_all": {}
+        },
+        "sort": [{
+          "id": {
+            "order": "asc"
+          }
+        }]
+      }
+    }, function(error, res) {
+      if (!error && res.statusCode < 400) {
+        res.body.hits.hits.forEach((anime) => {
+          animeList.push(anime.sort[0]);
+        });
+        resolve(animeList);
+      } else {
+        console.error(res.body);
+      }
+    });
+  });
+};
+
 let args = process.argv.slice(2);
 
 args.forEach((param, index) => {
@@ -169,5 +201,28 @@ args.forEach((param, index) => {
           )
         ), Promise.resolve())
       );
+  }
+  if (param === '--cleanup') {
+    let startPage = 1;
+
+    getLastPage(256)
+      .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
+        .slice(startPage, last_page + 1)
+      )
+      .then(pages =>
+        pages
+        .reduce((result, page) => result.then((allAnimeIDs) => fetchPage(page)
+          .then(ids => allAnimeIDs.concat(ids))
+        ), Promise.resolve([]))
+      )
+      .then(remoteAnimeIDs => {
+        getAnimeIDs(0,100000).then(localIDs => {
+          localIDs.forEach(id => {
+            if(remoteAnimeIDs.indexOf(id) === -1){
+              console.log(id, 'is not found on anilist');
+            }
+          });
+        });
+      });
   }
 });
