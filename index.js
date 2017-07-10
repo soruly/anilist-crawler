@@ -188,7 +188,7 @@ args.forEach((param, index) => {
     let fetchToEnd = value.match(format)[2] === '-';
     let endPage = fetchToEnd ? parseInt(value.match(format)[3]) : startPage;
 
-    getLastPage(249)
+    getLastPage(256)
       .then(last_page => (endPage < last_page ? endPage : last_page))
       .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
         .slice(startPage, last_page + 1)
