@@ -50,4 +50,4 @@ For details of the API please visit https://github.com/joshstar/AniList-API-Docs
 ## Notes
 - anime IDs are discovered from the /anime/browse endpoint
 - character and staff IDs are discovered from the crawled anime
-- elasticsearch 2.x does not support having . (dot) in field name. It would fail as `airing_stats` may use episode numbers like 13.5 as keys.
+- airing_stats is removed from anime because it cause quite a lot of trouble in elasticsearch

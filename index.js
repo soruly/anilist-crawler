@@ -86,6 +86,7 @@ let storeData = (data, index, type, id) => new Promise((resolve, reject) => {
 let fetchAnime = id => new Promise((resolve, reject) => {
   console.log(`Crawling anime ${id}`);
   fetchData('anime', id)
+    .then(anime => {delete anime.airing_stats; return anime;})
     .then(anime =>
       Promise.all([
         storeData(anime, db_name, 'anime', anime.id),
