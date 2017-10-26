@@ -51,3 +51,5 @@ For details of the API please visit https://github.com/joshstar/AniList-API-Docs
 - anime IDs are discovered from the /anime/browse endpoint
 - character and staff IDs are discovered from the crawled anime
 - airing_stats is removed from anime because it cause quite a lot of trouble in elasticsearch
+- to increase number of fields in elasticsearch, you can run
+`curl -XPUT http://127.0.0.1:9200/your_index/_settings -d'{"index.mapping.total_fields.limit":2000}'`
