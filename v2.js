@@ -155,10 +155,6 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
         allTime
         context
       }
-      stats {
-        scoreDistribution
-        userDistribution
-      }
       siteUrl
     }
   }
