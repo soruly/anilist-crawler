@@ -184,7 +184,12 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
   })
   .then(function (response) {
     // console.log(response.statusCode);
-    resolve(response.body.data);
+    if(response.body.data !== null) {
+      resolve(response.body.data);
+    }
+    else{
+      reject(response.body.errors);
+    }
   })
   .catch(function(error) {
     console.log(error);
