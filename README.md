@@ -59,6 +59,8 @@ See API docs in https://github.com/AniList/ApiV2-GraphQL-Docs.
 
 Anilist APIv2 supports GraphQL. It is faster because we don't need to send another request for character and staff native name. You can also customize the field for your own need. But you need to learn the GraphQL syntax, which is pretty easy.
 
+You can try the interactive query tool here. https://anilist.co/graphiql
+
 The usage of v2.js is exactly the same as above, just replace index.js with v2.js
 
 `--cleanup` has not been implemented in v2.js yet.
