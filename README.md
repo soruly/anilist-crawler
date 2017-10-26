@@ -53,3 +53,16 @@ For details of the API please visit https://github.com/joshstar/AniList-API-Docs
 - airing_stats is removed from anime because it cause quite a lot of trouble in elasticsearch
 - to increase number of fields in elasticsearch, you can run
 `curl -XPUT http://127.0.0.1:9200/your_index/_settings -d'{"index.mapping.total_fields.limit":2000}'`
+
+## Anilist APIv2 (beta)
+See API docs in https://github.com/AniList/ApiV2-GraphQL-Docs.
+
+Anilist APIv2 supports GraphQL. It is faster because we don't need to send another request for character and staff native name. You can also customize the field for your own need. But you need to learn the GraphQL syntax, which is pretty easy.
+
+The usage of v2.js is exactly the same as above, just replace index.js with v2.js
+
+`--cleanup` has not been implemented in v2.js yet.
+
+API request limit exceed (HTTP 429) has not been handled yet. With 60 requests/min per IP, it is unlikely to hit the limit with complex qurey.
+
+Access token is not required in Anilist APIv2.
