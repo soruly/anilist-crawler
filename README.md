@@ -9,7 +9,7 @@ Crawl data from anilist API and store in elasticsearch.
 - staff
 
 ## Requirements
-- Node.js 6.9+
+- Node.js 8.0+
 - elasticsearch 5.0+
 
 ## How to use
