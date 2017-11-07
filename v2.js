@@ -215,19 +215,21 @@ let storeData = (id, data) => new Promise((resolve, reject) => {
   });
 });
 
+const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
+
 const maxPerPage = 50;
 
 const fetchAnime = (animeID) => submitQuery({id: animeID})
   .then(data => data.Page.media[0])
   .then(anime => storeData(anime.id, anime)
-    .then(() => {console.log(`Completed anime ${anime.id} (${anime.title.native})`);})
+    .then(() => {console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);})
   )
   .catch(error => {console.log(error)});
 
 const fetchPage = (pageNumber) => submitQuery({page: pageNumber, perPage: maxPerPage})
   .then(data => data.Page.media)
   .then(anime_list => anime_list.map(anime => storeData(anime.id, anime)
-    .then(() => {console.log(`Completed anime ${anime.id} (${anime.title.native})`);})
+    .then(() => {console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);})
   ))
   .then(list => Promise.all(list))
   .catch(error => {console.log(error)});
