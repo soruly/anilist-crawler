@@ -11,6 +11,7 @@ Crawl data from anilist API and store in elasticsearch.
 ## Requirements
 - Node.js 8.0+
 - elasticsearch 5.0+
+- MariaDB 10.2+
 
 ## How to use
 `git clone https://github.com/soruly/anilist-crawler.git`
@@ -18,6 +19,15 @@ Crawl data from anilist API and store in elasticsearch.
 copy `config.sample.js` and rename to `config.js`
 
 Modify `config.js` to fill in your client_id and client_secret (get one from https://anilist.co/settings/developer)
+
+MariaDB setup SQL script
+```
+CREATE TABLE anilist (
+    id INTEGER UNSIGNED NOT NULL PRIMARY KEY,
+    json longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+    CHECK (JSON_VALID(json))
+);
+```
 
 Example
 
