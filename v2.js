@@ -1,5 +1,14 @@
 const request = require('requestretry').defaults({json: true});
+const MariaClient = require('mariasql');
 const config = require('./config');
+
+var c = new MariaClient({
+  host: config.db_host,
+  user: config.db_user,
+  password: config.db_pass,
+  db: config.db_database,
+  charset: 'utf8'
+});
 
 const graphQL_endpoint = 'https://graphql.anilist.co/';
 const db_store = config.db_store;
@@ -197,7 +206,20 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
 });
 
 let storeData = (id, data) => new Promise((resolve, reject) => {
-  // console.log(`Storing ${type} ${data.id}`);
+  // console.log(`Storing ${data.id}`);
+  var prep = c.prepare(`INSERT INTO ${config.db_table} VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
+  c.query(prep({
+    id,
+    json: JSON.stringify(data)
+  }), (error, rows) => {
+    if (!error) {
+      resolve(data);
+    } else {
+      reject(Error(error));
+    }
+  });
+  c.end();
+  /*
   let dataPath = `${db_store}${db_name}/anime/${id}`;
   request({
     method: 'PUT',
@@ -213,6 +235,7 @@ let storeData = (id, data) => new Promise((resolve, reject) => {
       reject(Error(error));
     }
   });
+  */
 });
 
 const getDisplayTitle = (title) => title.native ? title.native : title.romaji;

@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/soruly/anilist-crawler#readme",
   "dependencies": {
+    "mariasql": "^0.2.6",
     "requestretry": "^1.13.0"
   }
 }
