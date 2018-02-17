@@ -207,7 +207,7 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
 
 let storeData = (id, data) => new Promise((resolve, reject) => {
   // console.log(`Storing ${data.id}`);
-  var prep = c.prepare(`INSERT INTO ${config.db_table} VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
+  var prep = c.prepare(`INSERT INTO ${config.db_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
   c.query(prep({
     id,
     json: JSON.stringify(data)
