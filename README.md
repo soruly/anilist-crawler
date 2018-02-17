@@ -22,10 +22,13 @@ Modify `config.js` to fill in your client_id and client_secret (get one from htt
 
 MariaDB setup SQL script
 ```
-CREATE TABLE anilist (
-    id INTEGER UNSIGNED NOT NULL PRIMARY KEY,
-    json longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
-    CHECK (JSON_VALID(json))
+CREATE TABLE `anilist` (
+  `id` int(10) UNSIGNED NOT NULL PRIMARY KEY,
+  `title_chinese` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `synonyms_chinese` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `json_chinese` longtext CHARACTER SET utf8mb4 GENERATED ALWAYS AS (json_insert(json_insert(`json`,'$.title.chinese',`title_chinese`),'$.synonymsChinese',`synonyms_chinese`)) VIRTUAL,
+  CHECK (JSON_VALID(`json`))
 );
 ```
 
