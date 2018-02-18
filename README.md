@@ -24,12 +24,18 @@ MariaDB setup SQL script
 ```
 CREATE TABLE `anilist` (
   `id` int(10) UNSIGNED NOT NULL PRIMARY KEY,
-  `title_chinese` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `synonyms_chinese` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `json_chinese` longtext CHARACTER SET utf8mb4 GENERATED ALWAYS AS (json_insert(json_insert(`json`,'$.title.chinese',`title_chinese`),'$.synonymsChinese',`synonyms_chinese`)) VIRTUAL,
   CHECK (JSON_VALID(`json`))
 );
+
+
+CREATE TABLE `anilist_chinese` (
+  `id` int(10) UNSIGNED NOT NULL PRIMARY KEY,
+  `json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  CHECK (JSON_VALID(`json`))
+);
+
+CREATE VIEW `anilist_view` AS SELECT `anilist`.`id`, JSON_MERGE(`anilist`.`json`, IFNULL(`anilist_chinese`.`json`, JSON_OBJECT('title', JSON_OBJECT('chinese', null), 'synonyms_chinese', JSON_ARRAY()))) AS `json` FROM `anilist` LEFT JOIN `anilist_chinese` ON `anilist`.`id`=`anilist_chinese`.`id`
 ```
 
 Example
