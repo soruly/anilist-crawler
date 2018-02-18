@@ -167,6 +167,16 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
         allTime
         context
       }
+      stats {
+        scoreDistribution {
+          score
+          amount
+        }
+        statusDistribution {
+          status
+          amount
+        }
+      }
       siteUrl
     }
   }
@@ -206,36 +216,46 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
 });
 
 let storeData = (id, data) => new Promise((resolve, reject) => {
-  // console.log(`Storing ${data.id}`);
-  var prep = c.prepare(`INSERT INTO ${config.db_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
+  var c = new MariaClient({
+    host: config.db_host,
+    user: config.db_user,
+    password: config.db_pass,
+    db: config.db_database,
+    charset: 'utf8'
+  });
+  const prep = c.prepare(`INSERT INTO ${config.db_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
   c.query(prep({
     id,
     json: JSON.stringify(data)
   }), (error, rows) => {
     if (!error) {
-      resolve(data);
+      c.query(`SELECT json FROM anilist_view WHERE id=:id`, {id},
+        (error, rows) => {
+          c.end();
+          if(!error) {
+            const entry = JSON.parse(rows[0].json);
+            const dataPath = `${db_store}${db_name}/anime/${id}`;
+            request({
+              method: 'PUT',
+              url: dataPath,
+              json: entry
+            }, (error, response, body) => {
+              if (!error && response.statusCode < 400) {
+                resolve(data);
+              } else {
+                console.log(error);
+                console.log(response);
+                reject(Error(error));
+              }
+            });
+          } else {
+            reject(Error(error));
+          }
+        });
     } else {
       reject(Error(error));
     }
   });
-  c.end();
-  /*
-  let dataPath = `${db_store}${db_name}/anime/${id}`;
-  request({
-    method: 'PUT',
-    url: dataPath,
-    json: data
-  }, (error, response, body) => {
-    if (!error && response.statusCode < 400) {
-      resolve(data);
-      // console.log(`Stored ${type} ${data.id}`);
-    } else {
-      console.log(error);
-      console.log(response);
-      reject(Error(error));
-    }
-  });
-  */
 });
 
 const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
@@ -245,7 +265,9 @@ const maxPerPage = 50;
 const fetchAnime = (animeID) => submitQuery({id: animeID})
   .then(data => data.Page.media[0])
   .then(anime => storeData(anime.id, anime)
-    .then(() => {console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);})
+    .then(() => {
+      console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
+    })
   )
   .catch(error => {console.log(error)});
 
@@ -257,7 +279,7 @@ const fetchPage = (pageNumber) => submitQuery({page: pageNumber, perPage: maxPer
   .then(list => Promise.all(list))
   .catch(error => {console.log(error)});
 
-const getLastPage = () => submitQuery({page: 1, perPage: maxPerPage})
+const getLastPage = () => submitQuery({page: 213, perPage: maxPerPage})
   .then(data => data.Page.pageInfo.lastPage)
   .catch(error => {console.log(error)});
 
