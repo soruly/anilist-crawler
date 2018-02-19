@@ -215,6 +215,10 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
   })
 });
 
+
+// 1. store the json to mariadb
+// 2. select the json back (which is merged with anilist_chinese
+// 3. put the merged json to elasticsearch
 let storeData = (id, data) => new Promise((resolve, reject) => {
   var c = new MariaClient({
     host: config.db_host,
@@ -223,16 +227,20 @@ let storeData = (id, data) => new Promise((resolve, reject) => {
     db: config.db_database,
     charset: 'utf8'
   });
+  // store the json to mariadb
   const prep = c.prepare(`INSERT INTO ${config.db_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
   c.query(prep({
     id,
     json: JSON.stringify(data)
   }), (error, rows) => {
     if (!error) {
+      // select the data back from mariadb
+      // anilist_view is a json combined with anilist_chinese json
       c.query(`SELECT json FROM anilist_view WHERE id=:id`, {id},
         (error, rows) => {
           c.end();
           if(!error) {
+            // put the json to elasticsearch
             const entry = JSON.parse(rows[0].json);
             const dataPath = `${db_store}${db_name}/anime/${id}`;
             request({
