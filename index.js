@@ -1,212 +1,329 @@
-'use strict';
+const request = require('requestretry').defaults({json: true});
+const MariaClient = require('mariasql');
+const config = require('./config');
 
-let request = require('requestretry');
-let config = require('./config');
+var c = new MariaClient({
+  host: config.db_host,
+  user: config.db_user,
+  password: config.db_pass,
+  db: config.db_database,
+  charset: 'utf8'
+});
 
-const api_prefix = config.api_prefix;
+const graphQL_endpoint = 'https://graphql.anilist.co/';
 const db_store = config.db_store;
-const db_name = config.db_name; // elasticsearch index name
-const user_agent = config.user_agent;
-const client_id = config.client_id;
-const client_secret = config.client_secret;
+const db_name = 'anilist2'; // elasticsearch index name
 
-let access_token = '';
-let access_token_expire = 0;
-
-let getAccessToken = () => new Promise((resolve, reject) => {
-  if (access_token && access_token_expire - Math.floor(new Date().getTime() / 1000) > 300) {
-    resolve(access_token);
-  } else {
-    console.log(`Renewing access_token`);
-    request({
-      method: 'POST',
-      url: `${api_prefix}auth/access_token`,
-      json: true,
-      form: {
-        grant_type: 'client_credentials',
-        client_id: client_id,
-        client_secret: client_secret
+const q = {};
+q.query = `
+query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      total
+      perPage
+      currentPage
+      lastPage
+      hasNextPage
+    }
+    media(id: $id, type: $type) {
+      id
+      idMal
+      title {
+        native
+        romaji
+        english
       }
-    }, (error, response, body) => {
-      if (!error && response.statusCode === 200) {
-        access_token = body.access_token;
-        access_token_expire = body.expires;
-        let expireDateTime = new Date(access_token_expire * 1000).toISOString();
-        console.log(`Renewed access_token ${access_token} (valid until ${expireDateTime})`);
-        resolve(access_token);
-      } else {
-        reject(Error(error));
+      type
+      format
+      status
+      description
+      startDate {
+        year
+        month
+        day
       }
-    });
+      endDate {
+        year
+        month
+        day
+      }
+      season
+      episodes
+      duration
+      source
+      hashtag
+      trailer {
+        id
+        site
+      }
+      updatedAt
+      coverImage {
+        large
+        medium
+      }
+      bannerImage
+      genres
+      synonyms
+      averageScore
+      meanScore
+      popularity
+      tags {
+        id
+        name
+        description
+        category
+        rank
+        isGeneralSpoiler
+        isMediaSpoiler
+        isAdult
+      }
+      relations {
+        edges {
+          node {
+            id
+            title {
+              native
+            }
+          }
+          relationType
+        }
+      }
+      characters {
+        edges {
+          role
+          node {
+            id
+            name {
+              first
+              last
+              native
+              alternative
+            }
+            image {
+              large
+              medium
+            }
+            siteUrl
+          }
+          voiceActors(language: JAPANESE) {
+            id
+            name {
+              first
+              last
+              native
+            }
+            language
+            image {
+              large
+              medium
+            }
+            siteUrl
+          }
+        }
+      }
+      staff {
+        edges {
+          role
+          node {
+            id
+            name {
+              first
+              last
+              native
+            }
+            language
+            image {
+              large
+              medium
+            }
+            description
+            siteUrl
+          }
+        }
+      }
+      studios {
+        edges {
+          isMain
+          node {
+            id
+            name
+            siteUrl
+          }
+        }
+      }
+      isAdult
+      externalLinks {
+        id
+        url
+        site
+      }
+      rankings {
+        id
+        rank
+        type
+        format
+        year
+        season
+        allTime
+        context
+      }
+      stats {
+        scoreDistribution {
+          score
+          amount
+        }
+        statusDistribution {
+          status
+          amount
+        }
+      }
+      siteUrl
+    }
   }
-});
+}
+`;
+q.variables = {};
 
-let fetchData = (type, id) => new Promise((resolve, reject) => {
-  // console.log(`Fetching ${type} ${id}`);
-  getAccessToken().then(access_token => {
-    request({
-      method: 'GET',
-      url: `${api_prefix}${type}/${id}/page?access_token=${access_token}`,
-      json: true,
-      maxAttempts: 5,
-      retryDelay: 5000,
-      retryStrategy: request.RetryStrategies.HTTPOrNetworkError
-    }, (error, response, data) => {
-      if (!error && response.statusCode === 200) {
-        resolve(data);
-        // console.log(`Fetched ${type} ${id}`);
-      } else {
-        console.log(error);
-        console.log(response);
-        reject(Error(error));
-      }
-    });
-  });
-});
-
-let storeData = (data, index, type, id) => new Promise((resolve, reject) => {
-  // console.log(`Storing ${type} ${data.id}`);
-  let dataPath = `${db_store}${index}/${type}/${id}`;
+const submitQuery = (variables) => new Promise((resolve, reject) => {
+  if(variables.id){
+    console.log(`Crawling anime ${variables.id}`);
+  }
+  else if(variables.page){
+    console.log(`Crawling page ${variables.page}`);
+  }
+  q.variables = variables;
   request({
-    method: 'PUT',
-    url: dataPath,
-    json: data
-  }, (error, response, body) => {
-    if (!error && response.statusCode < 400) {
-      resolve(data);
-      // console.log(`Stored ${type} ${data.id}`);
+    url: graphQL_endpoint,
+    body: q,
+    method: 'POST',
+    maxAttempts: 5,
+    retryDelay: 5000,
+    retryStrategy: request.RetryStrategies.HTTPOrNetworkError
+  })
+  .then(function (response) {
+    // console.log(response.statusCode);
+    if(response.body.data !== null) {
+      resolve(response.body.data);
+    }
+    else{
+      reject(response.body.errors);
+    }
+  })
+  .catch(function(error) {
+    console.log(error);
+    reject(error);
+  })
+});
+
+
+// 1. store the json to mariadb
+// 2. select the json back (which is merged with anilist_chinese
+// 3. put the merged json to elasticsearch
+let storeData = (id, data) => new Promise((resolve, reject) => {
+  var c = new MariaClient({
+    host: config.db_host,
+    user: config.db_user,
+    password: config.db_pass,
+    db: config.db_database,
+    charset: 'utf8'
+  });
+  // store the json to mariadb
+  const prep = c.prepare(`INSERT INTO ${config.db_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
+  c.query(prep({
+    id,
+    json: JSON.stringify(data)
+  }), (error, rows) => {
+    if (!error) {
+      // select the data back from mariadb
+      // anilist_view is a json combined with anilist_chinese json
+      c.query(`SELECT json FROM anilist_view WHERE id=:id`, {id},
+        (error, rows) => {
+          c.end();
+          if(!error) {
+            // put the json to elasticsearch
+            const entry = JSON.parse(rows[0].json);
+            const dataPath = `${db_store}${db_name}/anime/${id}`;
+            request({
+              method: 'PUT',
+              url: dataPath,
+              json: entry
+            }, (error, response, body) => {
+              if (!error && response.statusCode < 400) {
+                resolve(data);
+              } else {
+                console.log(error);
+                console.log(response);
+                reject(Error(error));
+              }
+            });
+          } else {
+            reject(Error(error));
+          }
+        });
     } else {
-      console.log(error);
-      console.log(response);
       reject(Error(error));
     }
   });
 });
 
-let fetchAnime = id => new Promise((resolve, reject) => {
-  console.log(`Crawling anime ${id}`);
-  fetchData('anime', id)
-    .then(anime => {delete anime.airing_stats; return anime;})
-    .then(anime =>
-      Promise.all([
-        storeData(anime, db_name, 'anime', anime.id),
+const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
 
-        Promise.all(
-          anime.characters.map(character => character.id)
-          .filter((elem, index, self) => index === self.indexOf(elem))
-          .map(id => fetchData('character', id)
-            .then(character => storeData(character, db_name, 'character', character.id))
-          )
-        ),
+const maxPerPage = 50;
 
-        Promise.all(
-          anime.staff.map(staff => staff.id).concat(
-            anime.characters
-            .filter(character => character.actor[0])
-            .map(character => character.actor[0].id)
-          )
-          .filter((elem, index, self) => index === self.indexOf(elem))
-          .map(id => fetchData('staff', id)
-            .then(staff => storeData(staff, db_name, 'staff', staff.id))
-          )
-        )
-      ])
-    )
-    .then((anime) => {
-      console.log(`Completed anime ${id} (${anime[0].title_japanese})`);
-      resolve();
-    });
-});
+const fetchAnime = (animeID) => submitQuery({id: animeID})
+  .then(data => data.Page.media[0])
+  .then(anime => storeData(anime.id, anime)
+    .then(() => {
+      console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
+    })
+  )
+  .catch(error => {console.log(error)});
 
-let fetchPage = (start, end) => new Promise((resolve, reject) => {
-  console.log(`Fetching page ${start}`);
-  getAccessToken().then(access_token => {
-    request({
-      method: 'GET',
-      url: `${api_prefix}browse/anime?sort=id&page=${start}&access_token=${access_token}`,
-      json: true
-    }, (error, response, data) => {
-      console.log(`Fetched page ${start}`);
-      resolve(data.map(anime => anime.id));
-    });
-  });
-});
+const fetchPage = (pageNumber) => submitQuery({page: pageNumber, perPage: maxPerPage})
+  .then(data => data.Page.media)
+  .then(anime_list => anime_list.map(anime => storeData(anime.id, anime)
+    .then(() => {console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);})
+  ))
+  .then(list => Promise.all(list))
+  .catch(error => {console.log(error)});
 
-let getLastPage = (last_page) => new Promise((resolve, reject) => {
-  fetchPage(last_page).then(ids => {
-    if (ids.length < 40) {
-      console.log(`The last page is ${last_page}`);
-      resolve(last_page);
-    } else {
-      resolve(getLastPage(last_page + 1));
-    }
-  });
-});
+const getLastPage = () => submitQuery({page: 213, perPage: maxPerPage})
+  .then(data => data.Page.pageInfo.lastPage)
+  .catch(error => {console.log(error)});
 
-let getAnimeIDs = (from, size) => {
-  return new Promise((resolve, reject) => {
-    let animeList = [];
-    request({
-      method: 'POST',
-      url: `${db_store}anilist/anime/_search`,
-      json: {
-        "from": from,
-        "size": size,
-        "stored_fields": ["id"],
-        "query": {
-          "match_all": {}
-        },
-        "sort": [{
-          "id": {
-            "order": "asc"
-          }
-        }]
-      }
-    }, function(error, res) {
-      if (!error && res.statusCode < 400) {
-        res.body.hits.hits.forEach((anime) => {
-          animeList.push(anime.sort[0]);
-        });
-        resolve(animeList);
-      } else {
-        console.error(res.body);
-      }
-    });
-  });
-};
-
-let args = process.argv.slice(2);
+const args = process.argv.slice(2);
 
 args.forEach((param, index) => {
-  let value = args[index + 1];
+  const value = args[index + 1];
   if (param === '--anime') {
-    let animeID = parseInt(value, 10);
-    fetchAnime(animeID);
+    fetchAnime(parseInt(value, 10));
   }
+  
   if (param === '--page') {
-    let format = /^(\d+)(-)?(\d+)?$/;
-    let startPage = parseInt(value.match(format)[1]);
-    let fetchToEnd = value.match(format)[2] === '-';
-    let endPage = fetchToEnd ? parseInt(value.match(format)[3]) : startPage;
+    const format = /^(\d+)(-)?(\d+)?$/;
+    const startPage = parseInt(value.match(format)[1]);
+    const fetchToEnd = value.match(format)[2] === '-';
+    const endPage = fetchToEnd ? parseInt(value.match(format)[3]) : startPage;
 
-    getLastPage(264)
+    getLastPage()
+      .then(last_page => {
+        console.log(`The last page is ${last_page}`);
+        return last_page;
+      })
       .then(last_page => (endPage < last_page ? endPage : last_page))
       .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
         .slice(startPage, last_page + 1)
       )
       .then(pages =>
         pages
-        .reduce((result, page) => result.then(() => fetchPage(page)
-          .then(ids =>
-            ids.reduce((result, id) => result.then(() => fetchAnime(id)), Promise.resolve())
-          )
-        ), Promise.resolve())
+        .reduce((result, page) => result.then(() => fetchPage(page)), Promise.resolve())
       );
   }
+  /*
   if (param === '--cleanup') {
     let startPage = 1;
 
-    getLastPage(264)
+    getLastPage(260)
       .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
         .slice(startPage, last_page + 1)
       )
@@ -226,4 +343,6 @@ args.forEach((param, index) => {
         });
       });
   }
+  */
 });
+
