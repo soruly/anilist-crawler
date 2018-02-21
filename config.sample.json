@@ -1,13 +1,9 @@
 {
-  "client_id": "",
-  "client_secret": "",
-  "api_prefix": "https://anilist.co/api/",
-  "db_store": "http://127.0.0.1:9200/",
-  "db_name": "anilist",
-  "db_database": "mariaDB_schema",
-  "db_table": "anilist",
-  "db_user": "mariaDB_username",
-  "db_pass": "password",
-  "db_host": "127.0.0.1",
-  "user_agent": "Mozilla/5.0 (Windows NT 10.0.14393; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2952.0 Safari/537.36"
+  "graphql_endpoint": "https://graphql.anilist.co/",
+  "elasticsearch_endpoint": "http://127.0.0.1:9200/anilist2",
+  "mariadb_host": "127.0.0.1",
+  "mariadb_user": "anime",
+  "mariadb_password": "anime",
+  "mariadb_database": "anime",
+  "mariadb_table": "anilist"
 }

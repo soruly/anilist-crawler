@@ -1,18 +1,22 @@
 const request = require('requestretry').defaults({json: true});
 const MariaClient = require('mariasql');
-const config = require('./config');
+const {
+  graphql_endpoint,
+  mariadb_host,
+  mariadb_user,
+  mariadb_password,
+  mariadb_database,
+  mariadb_table,
+  elasticsearch_endpoint
+} = require('./config');
 
 var c = new MariaClient({
-  host: config.db_host,
-  user: config.db_user,
-  password: config.db_pass,
-  db: config.db_database,
+  host: mariadb_host,
+  user: mariadb_user,
+  password: mariadb_password,
+  db: mariadb_database,
   charset: 'utf8'
 });
-
-const graphQL_endpoint = 'https://graphql.anilist.co/';
-const db_store = config.db_store;
-const db_name = 'anilist2'; // elasticsearch index name
 
 const q = {};
 q.query = `
@@ -193,7 +197,7 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
   }
   q.variables = variables;
   request({
-    url: graphQL_endpoint,
+    url: graphql_endpoint,
     body: q,
     method: 'POST',
     maxAttempts: 5,
@@ -221,14 +225,14 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
 // 3. put the merged json to elasticsearch
 let storeData = (id, data) => new Promise((resolve, reject) => {
   var c = new MariaClient({
-    host: config.db_host,
-    user: config.db_user,
-    password: config.db_pass,
-    db: config.db_database,
+    host: mariadb_host,
+    user: mariadb_user,
+    password: mariadb_password,
+    db: mariadb_database,
     charset: 'utf8'
   });
   // store the json to mariadb
-  const prep = c.prepare(`INSERT INTO ${config.db_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
+  const prep = c.prepare(`INSERT INTO ${mariadb_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
   c.query(prep({
     id,
     json: JSON.stringify(data)
@@ -242,7 +246,7 @@ let storeData = (id, data) => new Promise((resolve, reject) => {
           if(!error) {
             // put the json to elasticsearch
             const entry = JSON.parse(rows[0].json);
-            const dataPath = `${db_store}${db_name}/anime/${id}`;
+            const dataPath = `${elasticsearch_endpoint}/anime/${id}`;
             request({
               method: 'PUT',
               url: dataPath,
