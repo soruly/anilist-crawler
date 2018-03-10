@@ -200,7 +200,7 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
     url: graphql_endpoint,
     body: q,
     method: 'POST',
-    maxAttempts: 5,
+    maxAttempts: 1,
     retryDelay: 5000,
     retryStrategy: request.RetryStrategies.HTTPOrNetworkError
   })
