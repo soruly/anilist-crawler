@@ -291,7 +291,7 @@ const fetchPage = (pageNumber) => submitQuery({page: pageNumber, perPage: maxPer
   .then(list => Promise.all(list))
   .catch(error => {console.log(error)});
 
-const getLastPage = () => submitQuery({page: 213, perPage: maxPerPage})
+const getLastPage = () => submitQuery({page: 1, perPage: maxPerPage})
   .then(data => data.Page.pageInfo.lastPage)
   .catch(error => {console.log(error)});
 
