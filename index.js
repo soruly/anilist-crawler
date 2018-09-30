@@ -1,5 +1,5 @@
-const request = require('requestretry').defaults({json: true});
-const MariaClient = require('mariasql');
+const request = require("requestretry").defaults({json: true});
+const MariaClient = require("mariasql");
 const {
   graphql_endpoint,
   mariadb_host,
@@ -8,15 +8,7 @@ const {
   mariadb_database,
   mariadb_table,
   elasticsearch_endpoint
-} = require('./config');
-
-var c = new MariaClient({
-  host: mariadb_host,
-  user: mariadb_user,
-  password: mariadb_password,
-  db: mariadb_database,
-  charset: 'utf8'
-});
+} = require("./config");
 
 const q = {};
 q.query = `
@@ -189,79 +181,76 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
 q.variables = {};
 
 const submitQuery = (variables) => new Promise((resolve, reject) => {
-  if(variables.id){
+  if (variables.id) {
     console.log(`Crawling anime ${variables.id}`);
-  }
-  else if(variables.page){
+  } else if (variables.page) {
     console.log(`Crawling page ${variables.page}`);
   }
   q.variables = variables;
   request({
     url: graphql_endpoint,
     body: q,
-    method: 'POST',
+    method: "POST",
     maxAttempts: 1,
     retryDelay: 5000,
     retryStrategy: request.RetryStrategies.HTTPOrNetworkError
   })
-  .then(function (response) {
+    .then((response) => {
     // console.log(response.statusCode);
-    if(response.body.data !== null) {
-      resolve(response.body.data);
-    }
-    else{
-      reject(response.body.errors);
-    }
-  })
-  .catch(function(error) {
-    console.log(error);
-    reject(error);
-  })
+      if (response.body.data !== null) {
+        resolve(response.body.data);
+      } else {
+        reject(response.body.errors);
+      }
+    })
+    .catch((error) => {
+      console.log(error);
+      reject(error);
+    });
 });
-
 
 // 1. store the json to mariadb
 // 2. select the json back (which is merged with anilist_chinese
 // 3. put the merged json to elasticsearch
-let storeData = (id, data) => new Promise((resolve, reject) => {
-  var c = new MariaClient({
+const storeData = (id, data) => new Promise((resolve, reject) => {
+  const c = new MariaClient({
     host: mariadb_host,
     user: mariadb_user,
     password: mariadb_password,
     db: mariadb_database,
-    charset: 'utf8'
+    charset: "utf8"
   });
   // store the json to mariadb
   const prep = c.prepare(`INSERT INTO ${mariadb_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
   c.query(prep({
     id,
     json: JSON.stringify(data)
-  }), (error, rows) => {
+  }), (error) => {
     if (!error) {
       // select the data back from mariadb
       // anilist_view is a json combined with anilist_chinese json
-      c.query(`SELECT json FROM anilist_view WHERE id=:id`, {id},
-        (error, rows) => {
+      c.query("SELECT json FROM anilist_view WHERE id=:id", {id},
+        (error2, rows2) => {
           c.end();
-          if(!error) {
+          if (!error2) {
             // put the json to elasticsearch
-            const entry = JSON.parse(rows[0].json);
+            const entry = JSON.parse(rows2[0].json);
             const dataPath = `${elasticsearch_endpoint}/anime/${id}`;
             request({
-              method: 'PUT',
+              method: "PUT",
               url: dataPath,
               json: entry
-            }, (error, response, body) => {
-              if (!error && response.statusCode < 400) {
+            }, (error3, response) => {
+              if (!error3 && response.statusCode < 400) {
                 resolve(data);
               } else {
-                console.log(error);
+                console.log(error3);
                 console.log(response);
-                reject(Error(error));
+                reject(Error(error3));
               }
             });
           } else {
-            reject(Error(error));
+            reject(Error(error2));
           }
         });
     } else {
@@ -275,54 +264,65 @@ const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
 const maxPerPage = 50;
 
 const fetchAnime = (animeID) => submitQuery({id: animeID})
-  .then(data => data.Page.media[0])
-  .then(anime => storeData(anime.id, anime)
+  .then((data) => data.Page.media[0])
+  .then((anime) => storeData(anime.id, anime)
     .then(() => {
       console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
     })
   )
-  .catch(error => {console.log(error)});
+  .catch((error) => {
+    console.log(error);
+  });
 
-const fetchPage = (pageNumber) => submitQuery({page: pageNumber, perPage: maxPerPage})
-  .then(data => data.Page.media)
-  .then(anime_list => anime_list.map(anime => storeData(anime.id, anime)
-    .then(() => {console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);})
+const fetchPage = (pageNumber) => submitQuery({page: pageNumber,
+  perPage: maxPerPage})
+  .then((data) => data.Page.media)
+  .then((anime_list) => anime_list.map((anime) => storeData(anime.id, anime)
+    .then(() => {
+      console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
+    })
   ))
-  .then(list => Promise.all(list))
-  .catch(error => {console.log(error)});
+  .then((list) => Promise.all(list))
+  .catch((error) => {
+    console.log(error);
+  });
 
-const getLastPage = () => submitQuery({page: 1, perPage: maxPerPage})
-  .then(data => data.Page.pageInfo.lastPage)
-  .catch(error => {console.log(error)});
+const getLastPage = () => submitQuery({page: 1,
+  perPage: maxPerPage})
+  .then((data) => data.Page.pageInfo.lastPage)
+  .catch((error) => {
+    console.log(error);
+  });
 
 const args = process.argv.slice(2);
 
 args.forEach((param, index) => {
   const value = args[index + 1];
-  if (param === '--anime') {
+  if (param === "--anime") {
     fetchAnime(parseInt(value, 10));
   }
-  
-  if (param === '--page') {
+
+  if (param === "--page") {
     const format = /^(\d+)(-)?(\d+)?$/;
-    const startPage = parseInt(value.match(format)[1]);
-    const fetchToEnd = value.match(format)[2] === '-';
-    const endPage = fetchToEnd ? parseInt(value.match(format)[3]) : startPage;
+    const startPage = parseInt(value.match(format)[1], 10);
+    const fetchToEnd = value.match(format)[2] === "-";
+    const endPage = fetchToEnd ? parseInt(value.match(format)[3], 10) : startPage;
 
     getLastPage()
-      .then(last_page => {
+      .then((last_page) => {
         console.log(`The last page is ${last_page}`);
         return last_page;
       })
-      .then(last_page => (endPage < last_page ? endPage : last_page))
-      .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
+      .then((last_page) => endPage < last_page ? endPage : last_page)
+      .then((last_page) => Array.from(new Array(last_page + 1), (val, i) => i)
         .slice(startPage, last_page + 1)
       )
-      .then(pages =>
+      .then((pages) =>
         pages
-        .reduce((result, page) => result.then(() => fetchPage(page)), Promise.resolve())
+          .reduce((result, page) => result.then(() => fetchPage(page)), Promise.resolve())
       );
   }
+
   /*
   if (param === '--cleanup') {
     let startPage = 1;
