@@ -1,5 +1,6 @@
 # anilist-crawler
-[![](https://david-dm.org/soruly/anilist-crawler/status.svg)](https://david-dm.org/soruly/anilist-crawler)
+[![Build Status](https://travis-ci.org/soruly/anilist-crawler.svg?branch=master)](https://travis-ci.org/soruly/anilist-crawler)
+[![Dependencies](https://david-dm.org/soruly/anilist-crawler/status.svg)](https://david-dm.org/soruly/anilist-crawler)
 
 Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and store in elasticsearch.
 
