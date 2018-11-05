@@ -1,5 +1,4 @@
 const request = require("requestretry").defaults({json: true});
-const MariaClient = require("mariasql");
 const {
   graphql_endpoint,
   mariadb_host,
@@ -212,51 +211,51 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
 // 1. store the json to mariadb
 // 2. select the json back (which is merged with anilist_chinese
 // 3. put the merged json to elasticsearch
-const storeData = (id, data) => new Promise((resolve, reject) => {
-  const c = new MariaClient({
-    host: mariadb_host,
-    user: mariadb_user,
-    password: mariadb_password,
-    db: mariadb_database,
-    charset: "utf8"
-  });
-  // store the json to mariadb
-  const prep = c.prepare(`INSERT INTO ${mariadb_table} (id, json) VALUES (:id, :json) ON DUPLICATE KEY UPDATE json=:json;`);
-  c.query(prep({
-    id,
-    json: JSON.stringify(data)
-  }), (error) => {
-    if (!error) {
-      // select the data back from mariadb
-      // anilist_view is a json combined with anilist_chinese json
-      c.query("SELECT json FROM anilist_view WHERE id=:id", {id},
-        (error2, rows2) => {
-          c.end();
-          if (!error2) {
-            // put the json to elasticsearch
-            const entry = JSON.parse(rows2[0].json);
-            const dataPath = `${elasticsearch_endpoint}/anime/${id}`;
-            request({
-              method: "PUT",
-              url: dataPath,
-              json: entry
-            }, (error3, response) => {
-              if (!error3 && response.statusCode < 400) {
-                resolve(data);
-              } else {
-                console.log(error3);
-                console.log(response);
-                reject(Error(error3));
-              }
-            });
-          } else {
-            reject(Error(error2));
-          }
-        });
-    } else {
-      reject(Error(error));
-    }
-  });
+const storeData = (id, data) => new Promise(async (resolve, reject) => {
+  try {
+    const knex = require("knex")({
+      client: "mysql",
+      connection: {
+        host: mariadb_host,
+        user: mariadb_user,
+        password: mariadb_password,
+        database: mariadb_database
+      }
+    });
+
+    // delete the record from mariadb if already exists
+    await knex(mariadb_table).where({id}).del();
+
+    // store the json to mariadb
+    await knex(mariadb_table).insert({
+      id,
+      json: JSON.stringify(data)
+    });
+
+    // select the data back from mariadb
+    // anilist_view is a json combined with anilist_chinese json
+    const mergedEntry = await knex("anilist_view").where({id}).select("json");
+    knex.destroy();
+
+    // put the json to elasticsearch
+    const entry = JSON.parse(mergedEntry[0].json);
+    const dataPath = `${elasticsearch_endpoint}/anime/${id}`;
+    request({
+      method: "PUT",
+      url: dataPath,
+      json: entry
+    }, (error3, response) => {
+      if (!error3 && response.statusCode < 400) {
+        resolve(data);
+      } else {
+        console.log(error3);
+        console.log(response);
+        reject(Error(error3));
+      }
+    });
+  } catch (e) {
+    reject(Error(e));
+  }
 });
 
 const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
