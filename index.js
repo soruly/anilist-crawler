@@ -255,36 +255,57 @@ const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
 
 const maxPerPage = 50;
 
-const fetchAnime = (animeID) => submitQuery(q, {id: animeID})
-  .then((data) => data.Page.media[0])
-  .then((anime) => storeData(anime.id, anime)
-    .then(() => {
-      console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
-    })
-  )
-  .catch((error) => {
+const fetchAnime = async (animeID) => {
+  try {
+    const data = await submitQuery(q, {id: animeID});
+    const anime = data.Page.media[0];
+    await storeData(anime.id, anime);
+    console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
+  } catch (error) {
     console.log(error);
-  });
+  }
+};
 
-const fetchPage = (pageNumber) => submitQuery(q, {page: pageNumber,
-  perPage: maxPerPage})
-  .then((data) => data.Page.media)
-  .then((anime_list) => anime_list.map((anime) => storeData(anime.id, anime)
-    .then(() => {
-      console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
-    })
-  ))
-  .then((list) => Promise.all(list))
-  .catch((error) => {
+const fetchPage = async (pageNumber) => {
+  try {
+    const data = await submitQuery(
+      q,
+      {
+        page: pageNumber,
+        perPage: maxPerPage
+      }
+    );
+    const anime_list = data.Page.media;
+    await Promise.all(
+      anime_list
+        .map((anime) => storeData(anime.id, anime)
+          .then(() => {
+            console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
+          })
+        )
+    );
+    console.log(`Completed page ${pageNumber}`);
+  } catch (error) {
     console.log(error);
-  });
+  }
+};
 
-const getLastPage = () => submitQuery(q, {page: 1,
-  perPage: maxPerPage})
-  .then((data) => data.Page.pageInfo.lastPage)
-  .catch((error) => {
+const getLastPage = async () => {
+  try {
+    const data = await submitQuery(
+      q,
+      {
+        page: 1,
+        perPage: maxPerPage
+      }
+    );
+    return data.Page.pageInfo.lastPage;
+  } catch (error) {
     console.log(error);
-  });
+    return null;
+  }
+};
+
 
 const args = process.argv.slice(2);
 
@@ -300,19 +321,16 @@ args.forEach((param, index) => {
     const fetchToEnd = value.match(format)[2] === "-";
     const endPage = fetchToEnd ? parseInt(value.match(format)[3], 10) : startPage;
 
-    getLastPage()
-      .then((last_page) => {
-        console.log(`The last page is ${last_page}`);
-        return last_page;
-      })
-      .then((last_page) => endPage < last_page ? endPage : last_page)
-      .then((last_page) => Array.from(new Array(last_page + 1), (val, i) => i)
+    (async () => {
+      console.log("Crawling page 1 to get last page number...");
+      let last_page = await getLastPage();
+      console.log(`The last page is ${last_page}`);
+      last_page = endPage < last_page ? endPage : last_page;
+      await Array.from(new Array(last_page + 1), (val, i) => i)
         .slice(startPage, last_page + 1)
-      )
-      .then((pages) =>
-        pages
-          .reduce((result, page) => result.then(() => fetchPage(page)), Promise.resolve())
-      );
+        .reduce((result, page) => result.then(() => fetchPage(page)), Promise.resolve());
+      console.log(`Completed page ${startPage}-${last_page}`);
+    })();
   }
 
   /*
