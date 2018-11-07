@@ -1,6 +1,6 @@
 {
   "name": "anilist-crawler",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/soruly/anilist-crawler#readme",
   "dependencies": {
+    "dotenv": "^6.1.0",
     "knex": "^0.15.2",
     "mysql": "^2.16.0",
     "request": "^2.88.0",

@@ -1,13 +1,14 @@
+require("dotenv").config();
 const request = require("requestretry").defaults({json: true});
 const {
-  graphql_endpoint,
-  mariadb_host,
-  mariadb_user,
-  mariadb_password,
-  mariadb_database,
-  mariadb_table,
-  elasticsearch_endpoint
-} = require("./config");
+  ANILIST_API_ENDPOINT,
+  DB_HOST,
+  DB_USER,
+  DB_PASS,
+  DB_NAME,
+  DB_TABLE,
+  ELASTICSEARCH_ENDPOINT
+} = process.env;
 
 const q = {};
 q.query = `
@@ -187,7 +188,7 @@ const submitQuery = (variables) => new Promise((resolve, reject) => {
   }
   q.variables = variables;
   request({
-    url: graphql_endpoint,
+    url: ANILIST_API_ENDPOINT,
     body: q,
     method: "POST",
     maxAttempts: 1,
@@ -216,18 +217,18 @@ const storeData = (id, data) => new Promise(async (resolve, reject) => {
     const knex = require("knex")({
       client: "mysql",
       connection: {
-        host: mariadb_host,
-        user: mariadb_user,
-        password: mariadb_password,
-        database: mariadb_database
+        host: DB_HOST,
+        user: DB_USER,
+        password: DB_PASS,
+        database: DB_NAME
       }
     });
 
     // delete the record from mariadb if already exists
-    await knex(mariadb_table).where({id}).del();
+    await knex(DB_TABLE).where({id}).del();
 
     // store the json to mariadb
-    await knex(mariadb_table).insert({
+    await knex(DB_TABLE).insert({
       id,
       json: JSON.stringify(data)
     });
@@ -239,7 +240,7 @@ const storeData = (id, data) => new Promise(async (resolve, reject) => {
 
     // put the json to elasticsearch
     const entry = JSON.parse(mergedEntry[0].json);
-    const dataPath = `${elasticsearch_endpoint}/anime/${id}`;
+    const dataPath = `${ELASTICSEARCH_ENDPOINT}/anime/${id}`;
     request({
       method: "PUT",
       url: dataPath,

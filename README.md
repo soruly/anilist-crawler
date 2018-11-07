@@ -12,9 +12,9 @@ Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and st
 ## How to use
 `git clone https://github.com/soruly/anilist-crawler.git`
 
-copy `config.sample.js` and rename to `config.js`
+copy `.env.example` and rename to `.env`
 
-Modify `config.js` to fill in your mariaDB user and password
+Modify `.env` to fill in your mariaDB user and password
 
 MariaDB setup SQL script
 ```
