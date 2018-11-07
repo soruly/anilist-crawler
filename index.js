@@ -1,5 +1,5 @@
 require("dotenv").config();
-const request = require("requestretry").defaults({json: true});
+const fetch = require("node-fetch");
 const {
   ANILIST_API_ENDPOINT,
   DB_HOST,
@@ -178,41 +178,36 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
   }
 }
 `;
-q.variables = {};
 
-const submitQuery = (variables) => new Promise((resolve, reject) => {
+const submitQuery = async (query, variables) => {
   if (variables.id) {
     console.log(`Crawling anime ${variables.id}`);
   } else if (variables.page) {
     console.log(`Crawling page ${variables.page}`);
   }
-  q.variables = variables;
-  request({
-    url: ANILIST_API_ENDPOINT,
-    body: q,
-    method: "POST",
-    maxAttempts: 1,
-    retryDelay: 5000,
-    retryStrategy: request.RetryStrategies.HTTPOrNetworkError
-  })
-    .then((response) => {
-    // console.log(response.statusCode);
-      if (response.body.data !== null) {
-        resolve(response.body.data);
-      } else {
-        reject(response.body.errors);
-      }
-    })
-    .catch((error) => {
-      console.log(error);
-      reject(error);
-    });
-});
+  query.variables = variables;
+  try {
+    const response = await fetch(
+      ANILIST_API_ENDPOINT,
+      {
+        method: "POST",
+        body: JSON.stringify(query),
+        headers: {"Content-Type": "application/json"}
+      }).then((res) => res.json());
+    if (response.errors) {
+      console.log(response.errors);
+    }
+    return response.data;
+  } catch (e) {
+    console.log(e);
+    return null;
+  }
+};
 
 // 1. store the json to mariadb
 // 2. select the json back (which is merged with anilist_chinese
 // 3. put the merged json to elasticsearch
-const storeData = (id, data) => new Promise(async (resolve, reject) => {
+const storeData = async (id, data) => {
   try {
     const knex = require("knex")({
       client: "mysql",
@@ -239,31 +234,28 @@ const storeData = (id, data) => new Promise(async (resolve, reject) => {
     knex.destroy();
 
     // put the json to elasticsearch
-    const entry = JSON.parse(mergedEntry[0].json);
-    const dataPath = `${ELASTICSEARCH_ENDPOINT}/anime/${id}`;
-    request({
-      method: "PUT",
-      url: dataPath,
-      json: entry
-    }, (error3, response) => {
-      if (!error3 && response.statusCode < 400) {
-        resolve(data);
-      } else {
-        console.log(error3);
-        console.log(response);
-        reject(Error(error3));
-      }
-    });
+    const response = await fetch(
+      `${ELASTICSEARCH_ENDPOINT}/anime/${id}`,
+      {
+        method: "PUT",
+        body: mergedEntry[0].json,
+        headers: {"Content-Type": "application/json"}
+      });
+    if (response.ok) {
+      return data;
+    }
+    return null;
   } catch (e) {
-    reject(Error(e));
+    console.log(e);
+    return null;
   }
-});
+};
 
 const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
 
 const maxPerPage = 50;
 
-const fetchAnime = (animeID) => submitQuery({id: animeID})
+const fetchAnime = (animeID) => submitQuery(q, {id: animeID})
   .then((data) => data.Page.media[0])
   .then((anime) => storeData(anime.id, anime)
     .then(() => {
@@ -274,7 +266,7 @@ const fetchAnime = (animeID) => submitQuery({id: animeID})
     console.log(error);
   });
 
-const fetchPage = (pageNumber) => submitQuery({page: pageNumber,
+const fetchPage = (pageNumber) => submitQuery(q, {page: pageNumber,
   perPage: maxPerPage})
   .then((data) => data.Page.media)
   .then((anime_list) => anime_list.map((anime) => storeData(anime.id, anime)
@@ -287,7 +279,7 @@ const fetchPage = (pageNumber) => submitQuery({page: pageNumber,
     console.log(error);
   });
 
-const getLastPage = () => submitQuery({page: 1,
+const getLastPage = () => submitQuery(q, {page: 1,
   perPage: maxPerPage})
   .then((data) => data.Page.pageInfo.lastPage)
   .catch((error) => {
