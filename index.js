@@ -187,13 +187,11 @@ const submitQuery = async (query, variables) => {
   }
   query.variables = variables;
   try {
-    const response = await fetch(
-      ANILIST_API_ENDPOINT,
-      {
-        method: "POST",
-        body: JSON.stringify(query),
-        headers: {"Content-Type": "application/json"}
-      }).then((res) => res.json());
+    const response = await fetch(ANILIST_API_ENDPOINT, {
+      method: "POST",
+      body: JSON.stringify(query),
+      headers: { "Content-Type": "application/json" }
+    }).then(res => res.json());
     if (response.errors) {
       console.log(response.errors);
     }
@@ -220,7 +218,9 @@ const storeData = async (id, data) => {
     });
 
     // delete the record from mariadb if already exists
-    await knex(DB_TABLE).where({id}).del();
+    await knex(DB_TABLE)
+      .where({ id })
+      .del();
 
     // store the json to mariadb
     await knex(DB_TABLE).insert({
@@ -230,17 +230,17 @@ const storeData = async (id, data) => {
 
     // select the data back from mariadb
     // anilist_view is a json combined with anilist_chinese json
-    const mergedEntry = await knex("anilist_view").where({id}).select("json");
+    const mergedEntry = await knex("anilist_view")
+      .where({ id })
+      .select("json");
     knex.destroy();
 
     // put the json to elasticsearch
-    const response = await fetch(
-      `${ELASTICSEARCH_ENDPOINT}/anime/${id}`,
-      {
-        method: "PUT",
-        body: mergedEntry[0].json,
-        headers: {"Content-Type": "application/json"}
-      });
+    const response = await fetch(`${ELASTICSEARCH_ENDPOINT}/anime/${id}`, {
+      method: "PUT",
+      body: mergedEntry[0].json,
+      headers: { "Content-Type": "application/json" }
+    });
     if (response.ok) {
       return data;
     }
@@ -251,38 +251,38 @@ const storeData = async (id, data) => {
   }
 };
 
-const getDisplayTitle = (title) => title.native ? title.native : title.romaji;
+const getDisplayTitle = title => (title.native ? title.native : title.romaji);
 
 const maxPerPage = 50;
 
-const fetchAnime = async (animeID) => {
+const fetchAnime = async animeID => {
   try {
-    const data = await submitQuery(q, {id: animeID});
+    const data = await submitQuery(q, { id: animeID });
     const anime = data.Page.media[0];
     await storeData(anime.id, anime);
-    console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
+    console.log(
+      `Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`
+    );
   } catch (error) {
     console.log(error);
   }
 };
 
-const fetchPage = async (pageNumber) => {
+const fetchPage = async pageNumber => {
   try {
-    const data = await submitQuery(
-      q,
-      {
-        page: pageNumber,
-        perPage: maxPerPage
-      }
-    );
+    const data = await submitQuery(q, {
+      page: pageNumber,
+      perPage: maxPerPage
+    });
     const anime_list = data.Page.media;
     await Promise.all(
-      anime_list
-        .map((anime) => storeData(anime.id, anime)
-          .then(() => {
-            console.log(`Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`);
-          })
-        )
+      anime_list.map(anime =>
+        storeData(anime.id, anime).then(() => {
+          console.log(
+            `Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`
+          );
+        })
+      )
     );
     console.log(`Completed page ${pageNumber}`);
   } catch (error) {
@@ -292,20 +292,16 @@ const fetchPage = async (pageNumber) => {
 
 const getLastPage = async () => {
   try {
-    const data = await submitQuery(
-      q,
-      {
-        page: 1,
-        perPage: maxPerPage
-      }
-    );
+    const data = await submitQuery(q, {
+      page: 1,
+      perPage: maxPerPage
+    });
     return data.Page.pageInfo.lastPage;
   } catch (error) {
     console.log(error);
     return null;
   }
 };
-
 
 const args = process.argv.slice(2);
 
@@ -319,7 +315,9 @@ args.forEach((param, index) => {
     const format = /^(\d+)(-)?(\d+)?$/;
     const startPage = parseInt(value.match(format)[1], 10);
     const fetchToEnd = value.match(format)[2] === "-";
-    const endPage = fetchToEnd ? parseInt(value.match(format)[3], 10) : startPage;
+    const endPage = fetchToEnd
+      ? parseInt(value.match(format)[3], 10)
+      : startPage;
 
     (async () => {
       console.log("Crawling page 1 to get last page number...");
@@ -328,7 +326,10 @@ args.forEach((param, index) => {
       last_page = endPage < last_page ? endPage : last_page;
       await Array.from(new Array(last_page + 1), (val, i) => i)
         .slice(startPage, last_page + 1)
-        .reduce((result, page) => result.then(() => fetchPage(page)), Promise.resolve());
+        .reduce(
+          (result, page) => result.then(() => fetchPage(page)),
+          Promise.resolve()
+        );
       console.log(`Completed page ${startPage}-${last_page}`);
     })();
   }
@@ -359,4 +360,3 @@ args.forEach((param, index) => {
   }
   */
 });
-
