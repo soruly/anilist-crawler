@@ -36,7 +36,7 @@ const submitQuery = async (query, variables) => {
 const getTitle = title => (title.native ? title.native : title.romaji);
 
 const perPage = 50;
-const numOfWorker = 5;
+const numOfWorker = 3;
 
 if (cluster.isMaster) {
   (async () => {
@@ -46,7 +46,7 @@ if (cluster.isMaster) {
         console.log(`Crawling anime ${id}`);
         const anime = (await submitQuery(q, { id })).Page.media[0];
         const worker = cluster.fork();
-        worker.send({ task: "store", anime });
+        worker.send(anime);
         worker.on("message", message => {
           console.log(`Completed anime ${anime.id} (${getTitle(anime.title)})`);
           worker.kill();
@@ -69,33 +69,38 @@ if (cluster.isMaster) {
         }
         console.log(`Crawling page ${startPage}-${lastPage}`);
 
+        let animeList = [];
+        let finished = false;
+
+        for (let i = 0; i < numOfWorker; i++) {
+          cluster.fork();
+        }
+
+        cluster.on("message", (worker, anime) => {
+          console.log(`Completed anime ${anime.id} (${getTitle(anime.title)})`);
+          if (animeList.length > 0) {
+            worker.send(animeList.pop());
+          } else if (finished) {
+            worker.kill();
+          }
+        });
+
         for (let page = startPage; page <= lastPage; page++) {
           console.log(`Crawling page ${page}`);
-          const animeList = (await submitQuery(q, {
-            page,
-            perPage
-          })).Page.media;
-          console.log(`Completed page ${page}`);
-          for (let i = 0; i < numOfWorker; i++) {
-            const worker = cluster.fork();
-            if (animeList.length === 0) {
-              worker.kill();
-            } else {
-              worker.send({ task: "store", anime: animeList.pop() });
+          animeList = animeList.concat(
+            (await submitQuery(q, {
+              page,
+              perPage
+            })).Page.media
+          );
+          for (const id in cluster.workers) {
+            if (animeList.length > 0) {
+              cluster.workers[id].send(animeList.pop());
             }
-            worker.on("message", anime => {
-              console.log(
-                `Completed anime ${anime.id} (${getTitle(anime.title)})`
-              );
-              if (animeList.length === 0) {
-                worker.kill();
-              } else {
-                worker.send({ task: "store", anime: animeList.pop() });
-              }
-            });
           }
         }
-        console.log(`Completed page ${startPage}-${lastPage}`);
+        finished = true;
+        console.log(`Crawling complete page ${startPage}-${lastPage}`);
       }
     }
   })();
@@ -110,37 +115,34 @@ if (cluster.isMaster) {
     }
   });
 
-  process.on("message", async msg => {
-    if (msg.task === "fetch") {
-    } else if (msg.task === "store") {
-      // delete the record from mariadb if already exists
-      await knex(DB_TABLE)
-        .where({ id: msg.anime.id })
-        .del();
+  process.on("message", async anime => {
+    // delete the record from mariadb if already exists
+    await knex(DB_TABLE)
+      .where({ id: anime.id })
+      .del();
 
-      // store the json to mariadb
-      await knex(DB_TABLE).insert({
-        id: msg.anime.id,
-        json: JSON.stringify(msg.anime)
-      });
+    // store the json to mariadb
+    await knex(DB_TABLE).insert({
+      id: anime.id,
+      json: JSON.stringify(anime)
+    });
 
-      // select the data back from mariadb
-      // anilist_view is a json combined with anilist_chinese json
-      const mergedEntry = await knex("anilist_view")
-        .where({ id: msg.anime.id })
-        .select("json");
+    // select the data back from mariadb
+    // anilist_view is a json combined with anilist_chinese json
+    const mergedEntry = await knex("anilist_view")
+      .where({ id: anime.id })
+      .select("json");
 
-      // put the json to elasticsearch
-      const response = await fetch(
-        `${ELASTICSEARCH_ENDPOINT}/anime/${msg.anime.id}`,
-        {
-          method: "PUT",
-          body: mergedEntry[0].json,
-          headers: { "Content-Type": "application/json" }
-        }
-      );
-      process.send(msg.anime);
-    }
+    // put the json to elasticsearch
+    const response = await fetch(
+      `${ELASTICSEARCH_ENDPOINT}/anime/${anime.id}`,
+      {
+        method: "PUT",
+        body: mergedEntry[0].json,
+        headers: { "Content-Type": "application/json" }
+      }
+    );
+    process.send(anime);
   });
 
   process.on("exit", () => {
