@@ -138,15 +138,14 @@ const getLastPage = async () => {
   }
 };
 
-const args = process.argv.slice(2);
-
-args.forEach((param, index) => {
-  const value = args[index + 1];
-  if (param === "--anime") {
+for (let args of process.argv.slice(2)) {
+  if (args === "--anime") {
+    const value = process.argv[process.argv.indexOf("--anime") + 1];
     fetchAnime(parseInt(value, 10));
   }
 
-  if (param === "--page") {
+  if (args === "--page") {
+    const value = process.argv[process.argv.indexOf("--page") + 1];
     const format = /^(\d+)(-)?(\d+)?$/;
     const startPage = parseInt(value.match(format)[1], 10);
     const fetchToEnd = value.match(format)[2] === "-";
@@ -168,30 +167,4 @@ args.forEach((param, index) => {
       console.log(`Completed page ${startPage}-${last_page}`);
     })();
   }
-
-  /*
-  if (param === '--cleanup') {
-    let startPage = 1;
-
-    getLastPage(260)
-      .then(last_page => Array.from(new Array(last_page + 1), (val, index) => index)
-        .slice(startPage, last_page + 1)
-      )
-      .then(pages =>
-        pages
-        .reduce((result, page) => result.then((allAnimeIDs) => fetchPage(page)
-          .then(ids => allAnimeIDs.concat(ids))
-        ), Promise.resolve([]))
-      )
-      .then(remoteAnimeIDs => {
-        getAnimeIDs(0,100000).then(localIDs => {
-          localIDs.forEach(id => {
-            if(remoteAnimeIDs.indexOf(id) === -1){
-              console.log(id, 'is not found on anilist');
-            }
-          });
-        });
-      });
-  }
-  */
-});
+}
