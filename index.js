@@ -1,25 +1,13 @@
 require("dotenv").config();
 const fs = require("fs");
 const fetch = require("node-fetch");
-const {
-  ANILIST_API_ENDPOINT,
-  DB_HOST,
-  DB_USER,
-  DB_PASS,
-  DB_NAME,
-  DB_TABLE,
-  ELASTICSEARCH_ENDPOINT
-} = process.env;
+const child_process = require("child_process");
+const { ANILIST_API_ENDPOINT } = process.env;
 
 const q = {};
 q.query = fs.readFileSync("query.graphql", "utf8");
 
 const submitQuery = async (query, variables) => {
-  if (variables.id) {
-    console.log(`Crawling anime ${variables.id}`);
-  } else if (variables.page) {
-    console.log(`Crawling page ${variables.page}`);
-  }
   query.variables = variables;
   try {
     const response = await fetch(ANILIST_API_ENDPOINT, {
@@ -37,134 +25,66 @@ const submitQuery = async (query, variables) => {
   }
 };
 
-// 1. store the json to mariadb
-// 2. select the json back (which is merged with anilist_chinese
-// 3. put the merged json to elasticsearch
-const storeData = async (id, data) => {
-  try {
-    const knex = require("knex")({
-      client: "mysql",
-      connection: {
-        host: DB_HOST,
-        user: DB_USER,
-        password: DB_PASS,
-        database: DB_NAME
-      }
-    });
-
-    // delete the record from mariadb if already exists
-    await knex(DB_TABLE)
-      .where({ id })
-      .del();
-
-    // store the json to mariadb
-    await knex(DB_TABLE).insert({
-      id,
-      json: JSON.stringify(data)
-    });
-
-    // select the data back from mariadb
-    // anilist_view is a json combined with anilist_chinese json
-    const mergedEntry = await knex("anilist_view")
-      .where({ id })
-      .select("json");
-    knex.destroy();
-
-    // put the json to elasticsearch
-    const response = await fetch(`${ELASTICSEARCH_ENDPOINT}/anime/${id}`, {
-      method: "PUT",
-      body: mergedEntry[0].json,
-      headers: { "Content-Type": "application/json" }
-    });
-    if (response.ok) {
-      return data;
-    }
-    return null;
-  } catch (e) {
-    console.log(e);
-    return null;
-  }
-};
-
 const getDisplayTitle = title => (title.native ? title.native : title.romaji);
 
-const maxPerPage = 50;
+const perPage = 50;
+const numOfStoreWorker = 5;
 
-const fetchAnime = async animeID => {
-  try {
-    const data = await submitQuery(q, { id: animeID });
-    const anime = data.Page.media[0];
-    await storeData(anime.id, anime);
-    console.log(
-      `Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`
-    );
-  } catch (error) {
-    console.log(error);
-  }
-};
-
-const fetchPage = async pageNumber => {
-  try {
-    const data = await submitQuery(q, {
-      page: pageNumber,
-      perPage: maxPerPage
-    });
-    const anime_list = data.Page.media;
-    await Promise.all(
-      anime_list.map(anime =>
-        storeData(anime.id, anime).then(() => {
+(async () => {
+  for (let args of process.argv.slice(2)) {
+    if (args === "--anime") {
+      console.log(`Crawling anime ${animeID}`);
+      const anime = (await submitQuery(q, { id: animeID })).Page.media[0];
+      const storeWorker = child_process.fork("store.js");
+      storeWorker.send(anime);
+      storeWorker.on("message", message => {
+        if (message) {
+          console.log(message);
+        } else {
           console.log(
             `Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`
           );
-        })
-      )
-    );
-    console.log(`Completed page ${pageNumber}`);
-  } catch (error) {
-    console.log(error);
-  }
-};
+        }
+        storeWorker.send(null);
+      });
+    }
 
-const getLastPage = async () => {
-  try {
-    const data = await submitQuery(q, {
-      page: 1,
-      perPage: maxPerPage
-    });
-    return data.Page.pageInfo.lastPage;
-  } catch (error) {
-    console.log(error);
-    return null;
-  }
-};
+    if (args === "--page") {
+      const value = process.argv[process.argv.indexOf("--page") + 1];
+      const format = /^(\d+)(-)?(\d+)?$/;
+      const startPage = parseInt(value.match(format)[1], 10);
+      let lastPage = parseInt(value.match(format)[3], 10);
+      if (!value.match(format)[2]) {
+        lastPage = startPage;
+      } else if (value.match(format)[2] && isNaN(lastPage)) {
+        console.log("Looking up last page number");
+        lastPage = (await submitQuery(q, {
+          page: 1,
+          perPage
+        })).Page.pageInfo.lastPage;
+      }
+      console.log(`Crawling page ${startPage}-${lastPage}`);
 
-for (let args of process.argv.slice(2)) {
-  if (args === "--anime") {
-    const value = process.argv[process.argv.indexOf("--anime") + 1];
-    fetchAnime(parseInt(value, 10));
-  }
+      for (let page = startPage; page <= lastPage; page++) {
+        console.log(`Crawling page ${page}`);
+        const animeList = (await submitQuery(q, {
+          page,
+          perPage
+        })).Page.media;
+        console.log(`Completed page ${page}`);
+        for (let i = 0; i < numOfStoreWorker; i++) {
+          const storeWorker = child_process.fork("store.js");
 
-  if (args === "--page") {
-    const value = process.argv[process.argv.indexOf("--page") + 1];
-    const format = /^(\d+)(-)?(\d+)?$/;
-    const startPage = parseInt(value.match(format)[1], 10);
-    const fetchToEnd = value.match(format)[2] === "-";
-    const endPage = fetchToEnd
-      ? parseInt(value.match(format)[3], 10)
-      : startPage;
-
-    (async () => {
-      console.log("Crawling page 1 to get last page number...");
-      let last_page = await getLastPage();
-      console.log(`The last page is ${last_page}`);
-      last_page = endPage < last_page ? endPage : last_page;
-      await Array.from(new Array(last_page + 1), (val, i) => i)
-        .slice(startPage, last_page + 1)
-        .reduce(
-          (result, page) => result.then(() => fetchPage(page)),
-          Promise.resolve()
-        );
-      console.log(`Completed page ${startPage}-${last_page}`);
-    })();
+          storeWorker.send(animeList.pop() || null);
+          storeWorker.on("message", anime => {
+            console.log(
+              `Completed anime ${anime.id} (${getDisplayTitle(anime.title)})`
+            );
+            storeWorker.send(animeList.pop() || null);
+          });
+        }
+      }
+      console.log(`Completed page ${startPage}-${lastPage}`);
+    }
   }
-}
+})();
