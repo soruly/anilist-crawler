@@ -20,7 +20,7 @@
   "homepage": "https://github.com/soruly/anilist-crawler#readme",
   "dependencies": {
     "dotenv": "^8.2.0",
-    "knex": "^0.20.1",
+    "knex": "^0.20.2",
     "mysql": "^2.17.1",
     "node-fetch": "^2.6.0",
     "prettier": "^1.18.2"
