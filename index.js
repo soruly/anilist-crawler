@@ -62,10 +62,12 @@ if (cluster.isMaster) {
           lastPage = startPage;
         } else if (value.match(format)[2] && isNaN(lastPage)) {
           console.log("Looking up last page number");
-          lastPage = (await submitQuery(q, {
-            page: 1,
-            perPage
-          })).Page.pageInfo.lastPage;
+          lastPage = (
+            await submitQuery(q, {
+              page: 1,
+              perPage
+            })
+          ).Page.pageInfo.lastPage;
         }
         console.log(`Crawling page ${startPage}-${lastPage}`);
 
@@ -88,10 +90,12 @@ if (cluster.isMaster) {
         for (let page = startPage; page <= lastPage; page++) {
           console.log(`Crawling page ${page}`);
           animeList = animeList.concat(
-            (await submitQuery(q, {
-              page,
-              perPage
-            })).Page.media
+            (
+              await submitQuery(q, {
+                page,
+                perPage
+              })
+            ).Page.media
           );
           for (const id in cluster.workers) {
             if (animeList.length > 0) {
