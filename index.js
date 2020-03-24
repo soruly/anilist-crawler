@@ -9,7 +9,7 @@ const {
   DB_NAME,
   DB_TABLE,
   ELASTICSEARCH_ENDPOINT,
-  ANILIST_API_ENDPOINT
+  ANILIST_API_ENDPOINT,
 } = process.env;
 
 const q = {};
@@ -21,8 +21,8 @@ const submitQuery = async (query, variables) => {
     const response = await fetch(ANILIST_API_ENDPOINT, {
       method: "POST",
       body: JSON.stringify(query),
-      headers: { "Content-Type": "application/json" }
-    }).then(res => res.json());
+      headers: { "Content-Type": "application/json" },
+    }).then((res) => res.json());
     if (response.errors) {
       console.log(response.errors);
     }
@@ -33,7 +33,7 @@ const submitQuery = async (query, variables) => {
   }
 };
 
-const getTitle = title => (title.native ? title.native : title.romaji);
+const getTitle = (title) => (title.native ? title.native : title.romaji);
 
 const perPage = 50;
 const numOfWorker = 3;
@@ -47,7 +47,7 @@ if (cluster.isMaster) {
         const anime = (await submitQuery(q, { id })).Page.media[0];
         const worker = cluster.fork();
         worker.send(anime);
-        worker.on("message", message => {
+        worker.on("message", (message) => {
           console.log(`Completed anime ${anime.id} (${getTitle(anime.title)})`);
           worker.kill();
         });
@@ -65,7 +65,7 @@ if (cluster.isMaster) {
           lastPage = (
             await submitQuery(q, {
               page: 1,
-              perPage
+              perPage,
             })
           ).Page.pageInfo.lastPage;
         }
@@ -93,7 +93,7 @@ if (cluster.isMaster) {
             (
               await submitQuery(q, {
                 page,
-                perPage
+                perPage,
               })
             ).Page.media
           );
@@ -115,20 +115,18 @@ if (cluster.isMaster) {
       host: DB_HOST,
       user: DB_USER,
       password: DB_PASS,
-      database: DB_NAME
-    }
+      database: DB_NAME,
+    },
   });
 
-  process.on("message", async anime => {
+  process.on("message", async (anime) => {
     // delete the record from mariadb if already exists
-    await knex(DB_TABLE)
-      .where({ id: anime.id })
-      .del();
+    await knex(DB_TABLE).where({ id: anime.id }).del();
 
     // store the json to mariadb
     await knex(DB_TABLE).insert({
       id: anime.id,
-      json: JSON.stringify(anime)
+      json: JSON.stringify(anime),
     });
 
     // select the data back from mariadb
@@ -143,7 +141,7 @@ if (cluster.isMaster) {
       {
         method: "PUT",
         body: mergedEntry[0].json,
-        headers: { "Content-Type": "application/json" }
+        headers: { "Content-Type": "application/json" },
       }
     );
     process.send(anime);
