@@ -131,19 +131,14 @@ if (cluster.isMaster) {
 
     // select the data back from mariadb
     // anilist_view is a json combined with anilist_chinese json
-    const mergedEntry = await knex("anilist_view")
-      .where({ id: anime.id })
-      .select("json");
+    const mergedEntry = await knex("anilist_view").where({ id: anime.id }).select("json");
 
     // put the json to elasticsearch
-    const response = await fetch(
-      `${ELASTICSEARCH_ENDPOINT}/anime/${anime.id}`,
-      {
-        method: "PUT",
-        body: mergedEntry[0].json,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    const response = await fetch(`${ELASTICSEARCH_ENDPOINT}/anime/${anime.id}`, {
+      method: "PUT",
+      body: mergedEntry[0].json,
+      headers: { "Content-Type": "application/json" },
+    });
     process.send(anime);
   });
 
