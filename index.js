@@ -1,7 +1,9 @@
-require("dotenv").config();
-const fs = require("fs");
-const cluster = require("cluster");
-const fetch = require("node-fetch");
+import fs from "fs";
+import cluster from "cluster";
+import fetch from "node-fetch";
+import Knex from "knex";
+import dotenv from "dotenv";
+dotenv.config();
 const {
   DB_HOST,
   DB_USER,
@@ -109,7 +111,7 @@ if (cluster.isMaster) {
     }
   })();
 } else {
-  const knex = require("knex")({
+  const knex = Knex({
     client: "mysql",
     connection: {
       host: DB_HOST,

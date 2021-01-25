@@ -1,4 +1,5 @@
 # anilist-crawler
+
 [![Build Status](https://travis-ci.org/soruly/anilist-crawler.svg?branch=master)](https://travis-ci.org/soruly/anilist-crawler)
 [![Dependencies](https://david-dm.org/soruly/anilist-crawler/status.svg)](https://david-dm.org/soruly/anilist-crawler)
 [![license](https://img.shields.io/github/license/soruly/anilist-crawler.svg)](https://raw.githubusercontent.com/soruly/anilist-crawler/master/LICENSE)
@@ -6,11 +7,13 @@
 Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and store in elasticsearch.
 
 ## Requirements
-- Node.js 8.0+
+
+- Node.js 12+
 - elasticsearch 5.0+
 - MariaDB 10.2+
 
 ## How to use
+
 `git clone https://github.com/soruly/anilist-crawler.git`
 
 copy `.env.example` and rename to `.env`
@@ -18,6 +21,7 @@ copy `.env.example` and rename to `.env`
 Modify `.env` to fill in your mariaDB user and password
 
 MariaDB setup SQL script
+
 ```
 CREATE TABLE `anilist` (
   `id` int(10) UNSIGNED NOT NULL PRIMARY KEY,
@@ -41,16 +45,13 @@ Fetch anime ID 123
 
 `node index.js --anime 123`
 
-
 Fetch all anime in page 240
 
 `node index.js --page 240`
 
-
 Fetch all anime from page 240 to 244 (inclusive)
 
 `node index.js --page 240-244`
-
 
 Fetch all anime from page 240 to the last page
 
@@ -66,8 +67,8 @@ For details of Anilist API please visit https://github.com/AniList/ApiV2-GraphQL
 You can try the interactive query tool here. https://anilist.co/graphiql
 
 ## Notes
+
 - airing stats is removed from anime because it has too many columns
 - to increase number of fields in elasticsearch, you can run
-`curl -XPUT http://127.0.0.1:9200/your_index/_settings -d'{"index.mapping.total_fields.limit":2000}'`
+  `curl -XPUT http://127.0.0.1:9200/your_index/_settings -d'{"index.mapping.total_fields.limit":2000}'`
 - API request limit exceed (HTTP 429) has not been handled yet. With 60 requests/min per IP, it is unlikely to hit the limit with complex qurey.
-
