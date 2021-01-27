@@ -1,9 +1,9 @@
+import "dotenv/config.js";
 import fs from "fs";
 import cluster from "cluster";
 import fetch from "node-fetch";
 import Knex from "knex";
-import dotenv from "dotenv";
-dotenv.config();
+
 const {
   DB_HOST,
   DB_USER,
