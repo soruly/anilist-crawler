@@ -1,8 +1,7 @@
 # anilist-crawler
 
-[![Build Status](https://travis-ci.org/soruly/anilist-crawler.svg?branch=master)](https://travis-ci.org/soruly/anilist-crawler)
-[![Dependencies](https://david-dm.org/soruly/anilist-crawler/status.svg)](https://david-dm.org/soruly/anilist-crawler)
-[![license](https://img.shields.io/github/license/soruly/anilist-crawler.svg)](https://raw.githubusercontent.com/soruly/anilist-crawler/master/LICENSE)
+[![License](https://img.shields.io/github/license/soruly/anilist-crawler.svg?style=flat-square)](https://github.com/soruly/anilist-crawler/blob/master/LICENSE)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/soruly/anilist-crawler/Node.js%20CI?style=flat-square)](https://github.com/soruly/anilist-crawler/actions)
 
 Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and store in elasticsearch.
 
