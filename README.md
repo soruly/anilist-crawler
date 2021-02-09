@@ -3,13 +3,13 @@
 [![License](https://img.shields.io/github/license/soruly/anilist-crawler.svg?style=flat-square)](https://github.com/soruly/anilist-crawler/blob/master/LICENSE)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/soruly/anilist-crawler/Node.js%20CI?style=flat-square)](https://github.com/soruly/anilist-crawler/actions)
 
-Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and store in elasticsearch.
+Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and optionally store the merged result in elasticsearch.
 
 ## Requirements
 
 - Node.js 14.3+
-- elasticsearch 5.0+
 - MariaDB 10.2+
+- elasticsearch 5.0+ (optional)
 
 ## How to use
 
