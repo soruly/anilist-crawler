@@ -41,75 +41,75 @@ const perPage = 50;
 const numOfWorker = 3;
 
 if (cluster.isMaster) {
-  (async () => {
-    for (let args of process.argv.slice(2)) {
-      if (args === "--anime") {
-        const id = process.argv[process.argv.indexOf("--anime") + 1];
-        console.log(`Crawling anime ${id}`);
-        const anime = (await submitQuery(q, { id })).Page.media[0];
-        const worker = cluster.fork();
-        worker.send(anime);
-        worker.on("message", (message) => {
-          console.log(`Completed anime ${anime.id} (${getTitle(anime.title)})`);
-          worker.kill();
-        });
+  const [arg, value] = process.argv.slice(2);
+
+  if (arg === "--anime" && value) {
+    console.log(`Crawling anime ${value}`);
+    const anime = (await submitQuery(q, { id: value })).Page.media[0];
+    const worker = cluster.fork();
+    worker.on("message", (message) => {
+      console.log(`Completed anime ${anime.id} (${getTitle(anime.title)})`);
+      worker.kill();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    worker.send(anime);
+  } else if (arg === "--page" && value) {
+    const format = /^(\d+)(-)?(\d+)?$/;
+    const startPage = parseInt(value.match(format)[1], 10);
+    let lastPage = parseInt(value.match(format)[3], 10);
+    if (!value.match(format)[2]) {
+      lastPage = startPage;
+    } else if (value.match(format)[2] && isNaN(lastPage)) {
+      console.log("Looking up last page number");
+      lastPage = (
+        await submitQuery(q, {
+          page: 1,
+          perPage,
+        })
+      ).Page.pageInfo.lastPage;
+    }
+    console.log(`Crawling page ${startPage}-${lastPage}`);
+
+    let animeList = [];
+    let finished = false;
+
+    for (let i = 0; i < numOfWorker; i++) {
+      cluster.fork();
+    }
+
+    cluster.on("message", (worker, anime) => {
+      console.log(`Completed anime ${anime.id} (${getTitle(anime.title)})`);
+      if (animeList.length > 0) {
+        worker.send(animeList.pop());
+      } else if (finished) {
+        worker.kill();
       }
+    });
 
-      if (args === "--page") {
-        const value = process.argv[process.argv.indexOf("--page") + 1];
-        const format = /^(\d+)(-)?(\d+)?$/;
-        const startPage = parseInt(value.match(format)[1], 10);
-        let lastPage = parseInt(value.match(format)[3], 10);
-        if (!value.match(format)[2]) {
-          lastPage = startPage;
-        } else if (value.match(format)[2] && isNaN(lastPage)) {
-          console.log("Looking up last page number");
-          lastPage = (
-            await submitQuery(q, {
-              page: 1,
-              perPage,
-            })
-          ).Page.pageInfo.lastPage;
+    for (let page = startPage; page <= lastPage; page++) {
+      console.log(`Crawling page ${page}`);
+      animeList = animeList.concat(
+        (
+          await submitQuery(q, {
+            page,
+            perPage,
+          })
+        ).Page.media
+      );
+      for (const id in cluster.workers) {
+        if (animeList.length > 0) {
+          cluster.workers[id].send(animeList.pop());
         }
-        console.log(`Crawling page ${startPage}-${lastPage}`);
-
-        let animeList = [];
-        let finished = false;
-
-        for (let i = 0; i < numOfWorker; i++) {
-          cluster.fork();
-        }
-
-        cluster.on("message", (worker, anime) => {
-          console.log(`Completed anime ${anime.id} (${getTitle(anime.title)})`);
-          if (animeList.length > 0) {
-            worker.send(animeList.pop());
-          } else if (finished) {
-            worker.kill();
-          }
-        });
-
-        for (let page = startPage; page <= lastPage; page++) {
-          console.log(`Crawling page ${page}`);
-          animeList = animeList.concat(
-            (
-              await submitQuery(q, {
-                page,
-                perPage,
-              })
-            ).Page.media
-          );
-          for (const id in cluster.workers) {
-            if (animeList.length > 0) {
-              cluster.workers[id].send(animeList.pop());
-            }
-          }
-        }
-        finished = true;
-        console.log(`Crawling complete page ${startPage}-${lastPage}`);
       }
     }
-  })();
+    finished = true;
+    console.log(`Crawling complete page ${startPage}-${lastPage}`);
+  } else {
+    console.log("Usage: node index.js --anime 1");
+    console.log("       node index.js --page 1");
+    console.log("       node index.js --page 1-");
+    console.log("       node index.js --page 1-2");
+  }
 } else {
   const knex = Knex({
     client: "mysql",
