@@ -40,8 +40,50 @@ const getTitle = (title) => (title.native ? title.native : title.romaji);
 const perPage = 50;
 const numOfWorker = 3;
 
+const knex = Knex({
+  client: "mysql",
+  connection: {
+    host: DB_HOST,
+    user: DB_USER,
+    password: DB_PASS,
+    database: DB_NAME,
+  },
+});
+
 if (cluster.isMaster) {
   const [arg, value] = process.argv.slice(2);
+
+  if (process.argv.slice(2).includes("--clean")) {
+    console.log(`Dropping table ${DB_TABLE} if exists`);
+    await knex.schema.dropTableIfExists(DB_TABLE);
+    console.log(`Dropped table ${DB_TABLE}`);
+  }
+  if (!(await knex.schema.hasTable(DB_TABLE))) {
+    console.log(`Creating table ${DB_TABLE}`);
+    await knex.schema.createTable(DB_TABLE, (table) => {
+      table.integer("id").unsigned().notNullable().primary();
+      table.json("json").collate("utf8mb4_unicode_ci");
+    });
+    console.log(`Created table ${DB_TABLE}`);
+  }
+  if (ELASTICSEARCH_ENDPOINT) {
+    if (!(await knex.schema.hasTable("anilist_chinese"))) {
+      console.log("Creating table anilist_chinese");
+      await knex.schema.createTable("anilist_chinese", (table) => {
+        table.integer("id").unsigned().notNullable().primary();
+        table.json("json").collate("utf8mb4_unicode_ci");
+      });
+      console.log("Created table anilist_chinese");
+    }
+    if (!(await knex.schema.hasTable("anilist_view"))) {
+      console.log("Creating table anilist_view");
+      await knew.raw(
+        "CREATE VIEW `anilist_view` AS SELECT `anilist`.`id`, JSON_MERGE(`anilist`.`json`, IFNULL(`anilist_chinese`.`json`, JSON_OBJECT('title', JSON_OBJECT('chinese', null), 'synonyms_chinese', JSON_ARRAY()))) AS `json` FROM `anilist` LEFT JOIN `anilist_chinese` ON `anilist`.`id`=`anilist_chinese`.`id`"
+      );
+      console.log("Created table anilist_view");
+    }
+  }
+  knex.destroy();
 
   if (arg === "--anime" && value) {
     console.log(`Crawling anime ${value}`);
@@ -111,16 +153,6 @@ if (cluster.isMaster) {
     console.log("       node index.js --page 1-2");
   }
 } else {
-  const knex = Knex({
-    client: "mysql",
-    connection: {
-      host: DB_HOST,
-      user: DB_USER,
-      password: DB_PASS,
-      database: DB_NAME,
-    },
-  });
-
   process.on("message", async (anime) => {
     // delete the record from mariadb if already exists
     await knex(DB_TABLE).where({ id: anime.id }).del();
