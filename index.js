@@ -50,7 +50,7 @@ const knex = Knex({
   },
 });
 
-if (cluster.isMaster) {
+if (cluster.isPrimary) {
   const [arg, value] = process.argv.slice(2);
 
   if (process.argv.slice(2).includes("--clean")) {
