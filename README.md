@@ -7,7 +7,7 @@ Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and op
 
 ## Requirements
 
-- Node.js 14.3+
+- Node.js 16.0+
 - MariaDB 10.2+
 - elasticsearch 5.0+ (optional)
 
