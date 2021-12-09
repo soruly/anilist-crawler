@@ -3,13 +3,13 @@
 [![License](https://img.shields.io/github/license/soruly/anilist-crawler.svg?style=flat-square)](https://github.com/soruly/anilist-crawler/blob/master/LICENSE)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/soruly/anilist-crawler/Node.js%20CI?style=flat-square)](https://github.com/soruly/anilist-crawler/actions)
 
-Crawl data from anilist APIv2, store in MariaDB, merge with Chinese data, and optionally store the merged result in elasticsearch.
+Crawl data from anilist APIv2 and store in MariaDB, or elasticsearch.
 
 ## Requirements
 
 - Node.js 16.0+
-- MariaDB 10.2+
-- elasticsearch 5.0+ (optional)
+- MariaDB 10.5+ (optional)
+- elasticsearch 7.0+ (optional)
 
 ## How to use
 
@@ -49,7 +49,4 @@ You can try the interactive query tool here. https://anilist.co/graphiql
 
 ## Notes
 
-- airing stats is removed from anime because it has too many columns
-- to increase number of fields in elasticsearch, you can run
-  `curl -XPUT http://127.0.0.1:9200/your_index/_settings -d'{"index.mapping.total_fields.limit":2000}'`
-- API request limit exceed (HTTP 429) has not been handled yet. With 60 requests/min per IP, it is unlikely to hit the limit with complex qurey.
+- API request limit exceed (HTTP 429) has not been handled yet. With 60 requests/min per IP, it is unlikely to hit the limit with complex query.
