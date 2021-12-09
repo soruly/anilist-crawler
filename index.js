@@ -4,7 +4,8 @@ import cluster from "cluster";
 import fetch from "node-fetch";
 import Knex from "knex";
 
-const { DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_TABLE, ES_HOST, ES_PORT, ES_INDEX } = process.env;
+const { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME, DB_TABLE, ES_HOST, ES_PORT, ES_INDEX } =
+  process.env;
 
 const q = {};
 q.query = fs.readFileSync("query.graphql", "utf8");
@@ -35,6 +36,7 @@ const knex = DB_HOST
       client: "mysql",
       connection: {
         host: DB_HOST,
+        port: DB_PORT,
         user: DB_USER,
         password: DB_PASS,
         database: DB_NAME,
