@@ -49,4 +49,5 @@ You can try the interactive query tool here. https://anilist.co/graphiql
 
 ## Notes
 
+- If you do not need mariaDB or elasticsearch, set DB_HOST or ES_HOST to empty string
 - API request limit exceed (HTTP 429) has not been handled yet. With 60 requests/min per IP, it is unlikely to hit the limit with complex query.
