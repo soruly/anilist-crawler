@@ -24,7 +24,7 @@
     "dotenv": "^16.0.0",
     "knex": "^1.0.3",
     "mysql": "^2.18.1",
-    "node-fetch": "^3.2.1"
+    "node-fetch": "^3.2.2"
   },
   "devDependencies": {
     "prettier": "^2.5.1"
