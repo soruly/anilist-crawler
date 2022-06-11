@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/github/license/soruly/anilist-crawler.svg?style=flat-square)](https://github.com/soruly/anilist-crawler/blob/master/LICENSE)
 [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/soruly/anilist-crawler/Node.js%20CI?style=flat-square)](https://github.com/soruly/anilist-crawler/actions)
 
-Crawl data from [AniList](https://anilist.co/home) API and store in MariaDB, or elasticsearch.
+Crawl data from [AniList](https://anilist.co/home) API and store as json in file system, MariaDB, or elasticsearch.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Crawl data from [AniList](https://anilist.co/home) API and store in MariaDB, or 
 
 3. copy `.env.example` and rename to `.env`
 
-4. Configure `.env` for your mariaDB, or elasticsearch, leave DB_HOST or ES_HOST empty if you don't need it
+4. Configure `.env` for your mariaDB, or elasticsearch, leave any of DB_HOST, ES_HOST, FS_DIR empty if you don't need it
 
 ## Examples
 

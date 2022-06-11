@@ -1,11 +1,22 @@
 import "dotenv/config.js";
-import fs from "fs";
+import path from "path";
+import fs from "fs-extra";
 import cluster from "cluster";
 import fetch from "node-fetch";
 import Knex from "knex";
 
-const { DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME, DB_TABLE, ES_HOST, ES_PORT, ES_INDEX } =
-  process.env;
+const {
+  DB_HOST,
+  DB_PORT,
+  DB_USER,
+  DB_PASS,
+  DB_NAME,
+  DB_TABLE,
+  ES_HOST,
+  ES_PORT,
+  ES_INDEX,
+  FS_DIR,
+} = process.env;
 
 const q = {};
 q.query = fs.readFileSync("query.graphql", "utf8");
@@ -86,6 +97,10 @@ if (cluster.isPrimary) {
       });
       console.log(`Created index ${ES_INDEX}`);
     }
+  }
+
+  if (FS_DIR) {
+    fs.ensureDirSync(FS_DIR);
   }
 
   if (arg === "--anime" && value) {
@@ -173,6 +188,11 @@ if (cluster.isPrimary) {
         headers: { "Content-Type": "application/json" },
       });
     }
+
+    if (FS_DIR) {
+      fs.outputFileSync(path.join(FS_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
+    }
+
     process.send(anime);
   });
 
