@@ -115,20 +115,10 @@ if (cluster.isPrimary) {
     worker.send(anime);
   } else if (arg === "--page" && value) {
     const format = /^(\d+)(-)?(\d+)?$/;
-    const startPage = parseInt(value.match(format)[1], 10);
-    let lastPage = parseInt(value.match(format)[3], 10);
-    if (!value.match(format)[2]) {
-      lastPage = startPage;
-    } else if (value.match(format)[2] && isNaN(lastPage)) {
-      console.log("Looking up last page number");
-      lastPage = (
-        await submitQuery(q, {
-          page: 1,
-          perPage,
-        })
-      ).Page.pageInfo.lastPage;
-    }
-    console.log(`Crawling page ${startPage}-${lastPage}`);
+    const startPage = Number(value.match(format)[1]);
+    const lastPage = value.match(format)[2] ? Number(value.match(format)[3]) : startPage;
+
+    console.log(`Crawling page ${startPage} to ${lastPage || "end"}`);
 
     let animeList = [];
     let finished = false;
@@ -146,24 +136,24 @@ if (cluster.isPrimary) {
       }
     });
 
-    for (let page = startPage; page <= lastPage; page++) {
+    let page = startPage;
+    while (!lastPage || page <= lastPage) {
       console.log(`Crawling page ${page}`);
-      animeList = animeList.concat(
-        (
-          await submitQuery(q, {
-            page,
-            perPage,
-          })
-        ).Page.media
-      );
+      const res = await submitQuery(q, {
+        page,
+        perPage,
+      });
+      animeList = animeList.concat(res.Page.media);
       for (const id in cluster.workers) {
         if (animeList.length > 0) {
           cluster.workers[id].send(animeList.pop());
         }
       }
+      if (!res.Page.pageInfo.hasNextPage) break;
+      page++;
     }
     finished = true;
-    console.log(`Crawling complete page ${startPage}-${lastPage}`);
+    console.log("Crawling complete");
   } else {
     console.log("Usage: node index.js --anime 1");
     console.log("       node index.js --page 1");
