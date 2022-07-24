@@ -30,18 +30,25 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
         day
       }
       season
+      seasonYear
+      seasonInt
       episodes
       duration
+      countryOfOrigin
+      isLicensed
       source
       hashtag
       trailer {
         id
         site
+        thumbnail
       }
       updatedAt
       coverImage {
+        extraLarge
         large
         medium
+        color
       }
       bannerImage
       genres
@@ -149,6 +156,26 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
         allTime
         context
       }
+      recommendations {
+        edges {
+          node {
+            id
+            rating
+            media {
+              id
+              title {
+                native
+              }
+            }
+            mediaRecommendation {
+              id
+              title {
+                native
+              }
+            }
+          }
+        }
+      }
       stats {
         scoreDistribution {
           score
@@ -160,6 +187,7 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
         }
       }
       siteUrl
+      modNotes
     }
   }
 }
