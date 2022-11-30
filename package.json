@@ -22,7 +22,7 @@
   "homepage": "https://github.com/soruly/anilist-crawler#readme",
   "dependencies": {
     "dotenv": "^16.0.3",
-    "fs-extra": "^11.0.0",
+    "fs-extra": "^11.1.0",
     "knex": "^2.3.0",
     "mysql": "^2.18.1",
     "node-fetch": "^3.3.0"
