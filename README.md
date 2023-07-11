@@ -1,7 +1,7 @@
 # anilist-crawler
 
 [![License](https://img.shields.io/github/license/soruly/anilist-crawler.svg?style=flat-square)](https://github.com/soruly/anilist-crawler/blob/master/LICENSE)
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/soruly/anilist-crawler/Node.js%20CI?style=flat-square)](https://github.com/soruly/anilist-crawler/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/soruly/anilist-crawler/node.js.yml?style=flat-square)](https://github.com/soruly/anilist-crawler/actions)
 
 Crawl data from [AniList](https://anilist.co/home) API and store as json in file system, MariaDB, or elasticsearch.
 
