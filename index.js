@@ -1,8 +1,7 @@
 import "dotenv/config.js";
-import path from "path";
-import fs from "fs-extra";
-import cluster from "cluster";
-import fetch from "node-fetch";
+import path from "node:path";
+import fs from "node:fs/promises";
+import cluster from "node:cluster";
 import Knex from "knex";
 
 const {
@@ -19,7 +18,7 @@ const {
 } = process.env;
 
 const q = {};
-q.query = fs.readFileSync("query.graphql", "utf8");
+q.query = await fs.readFile("query.graphql", "utf8");
 
 const submitQuery = async (query, variables) => {
   query.variables = variables;
@@ -100,7 +99,7 @@ if (cluster.isPrimary) {
   }
 
   if (FS_DIR) {
-    fs.ensureDirSync(FS_DIR);
+    await fs.mkdir(FS_DIR, { recursive: true });
   }
 
   if (arg === "--anime" && value) {
@@ -180,7 +179,7 @@ if (cluster.isPrimary) {
     }
 
     if (FS_DIR) {
-      fs.outputFileSync(path.join(FS_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
+      await fs.writeFile(path.join(FS_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
     }
 
     process.send(anime);

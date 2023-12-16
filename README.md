@@ -7,7 +7,7 @@ Crawl data from [AniList](https://anilist.co/home) API and store as json in file
 
 ## Requirements
 
-- Node.js 16.0+
+- Node.js 18.0+
 - MariaDB 10.5+ (optional)
 - elasticsearch 7.0+ (optional)
 
