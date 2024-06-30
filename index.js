@@ -1,9 +1,9 @@
-import "dotenv/config.js";
 import path from "node:path";
 import fs from "node:fs/promises";
 import cluster from "node:cluster";
 import Knex from "knex";
 
+process.loadEnvFile();
 const {
   DB_HOST,
   DB_PORT,
