@@ -34,6 +34,8 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
       seasonInt
       episodes
       duration
+      chapters
+      volumes
       countryOfOrigin
       isLicensed
       source
