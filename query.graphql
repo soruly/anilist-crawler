@@ -58,6 +58,7 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
       averageScore
       meanScore
       popularity
+      favourites
       tags {
         id
         name
@@ -143,10 +144,40 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
         }
       }
       isAdult
+      airingSchedule {
+        edges {
+          id
+          node {
+            id
+            airingAt
+            episode
+            mediaId
+            media {
+              id
+            }
+          }
+        }
+      }
       externalLinks {
         id
         url
         site
+      }
+      streamingEpisodes {
+        title
+        thumbnail
+        url
+        site
+      }
+      rankings {
+        id
+        rank
+        type
+        format
+        year
+        season
+        allTime
+        context
       }
       rankings {
         id
