@@ -31,10 +31,12 @@ Sometimes anime would be deleted from AniList, but it still exists locally in yo
 
 `node index.js --clean --page 240-`
 
+The output json files are saved to `anilist_anime` folder. You may adjust `query.graphql` to filter out fields that you do not want.
+
 For details of AniList API please visit https://github.com/AniList/ApiV2-GraphQL-Docs/
 
 You can try the interactive query tool here. https://anilist.co/graphiql
 
 ## Notes
 
-- API request limit exceed (HTTP 429) has not been handled yet. With 60 requests/min per IP, it is unlikely to hit the limit with complex query.
+- Anilist API has rate limit of 60 requests/min per IP address. The script will wait for a while when rate limit is reached.

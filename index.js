@@ -1,6 +1,5 @@
 import path from "node:path";
 import fs from "node:fs/promises";
-import cluster from "node:cluster";
 
 const OUTPUT_DIR = "anilist_anime";
 
@@ -9,91 +8,64 @@ q.query = await fs.readFile("query.graphql", "utf8");
 
 const submitQuery = async (query, variables) => {
   query.variables = variables;
-  try {
-    const response = await fetch("https://graphql.anilist.co/", {
+  for (let retry = 0; retry < 5; retry++) {
+    const res = await fetch("https://graphql.anilist.co/", {
       method: "POST",
       body: JSON.stringify(query),
       headers: { "Content-Type": "application/json" },
-    }).then((res) => res.json());
-    if (response.errors) {
-      console.log(response.errors);
+    });
+    if (res.status === 200) {
+      return (await res.json()).data;
     }
-    return response.data;
-  } catch (e) {
-    console.log(e);
-    return null;
+    if (res.status === 429) {
+      const delay = Number(res.headers.get("retry-after")) || 1;
+      console.log(`Rate limit reached, retry after ${delay} seconds`);
+      await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+    } else if (res.status >= 500) {
+      console.log(`Server side HTTP ${res.status} error, retry after 5 seconds`);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    } else {
+      console.log(res);
+      return null;
+    }
   }
 };
 
-const perPage = 50;
-const numOfWorker = 3;
+await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
-if (cluster.isPrimary) {
-  const [arg, value] = process.argv.slice(2);
+const [arg, value] = process.argv.slice(2);
+if (arg === "--anime" && value) {
+  console.log(`Crawling anime ${value}`);
+  const anime = (await submitQuery(q, { id: value })).Page.media[0];
+  console.log(`Saving anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
+  await fs.writeFile(path.join(OUTPUT_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
+  console.log(`Saved anime ${anime.id} to ${path.join(OUTPUT_DIR, `${anime.id}.json`)}`);
+} else if (arg === "--page" && value) {
+  const format = /^(\d+)(-)?(\d+)?$/;
+  const startPage = value.match(format)[1];
+  const lastPage = value.match(format)[2] ? Number(value.match(format)[3]) : startPage;
 
-  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  console.log(`Crawling page ${startPage} to ${lastPage || "end"}`);
 
-  if (arg === "--anime" && value) {
-    console.log(`Crawling anime ${value}`);
-    const anime = (await submitQuery(q, { id: value })).Page.media[0];
-    const worker = cluster.fork();
-    worker.on("message", (message) => {
-      console.log(`Completed anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
-      worker.kill();
+  let page = startPage;
+  while (!lastPage || page <= lastPage) {
+    console.log(`Crawling page ${page}`);
+    const data = await submitQuery(q, {
+      page,
+      perPage: 50,
     });
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    worker.send(anime);
-  } else if (arg === "--page" && value) {
-    const format = /^(\d+)(-)?(\d+)?$/;
-    const startPage = Number(value.match(format)[1]);
-    const lastPage = value.match(format)[2] ? Number(value.match(format)[3]) : startPage;
-
-    console.log(`Crawling page ${startPage} to ${lastPage || "end"}`);
-
-    let animeList = [];
-    let finished = false;
-
-    for (let i = 0; i < numOfWorker; i++) {
-      cluster.fork();
+    for (const anime of data.Page.media) {
+      console.log(`Saving anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
+      await fs.writeFile(path.join(OUTPUT_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
     }
-
-    cluster.on("message", (worker, anime) => {
-      console.log(`Completed anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
-      if (animeList.length > 0) {
-        worker.send(animeList.pop());
-      } else if (finished) {
-        worker.kill();
-      }
-    });
-
-    let page = startPage;
-    while (!lastPage || page <= lastPage) {
-      console.log(`Crawling page ${page}`);
-      const res = await submitQuery(q, {
-        page,
-        perPage,
-      });
-      animeList = animeList.concat(res.Page.media);
-      for (const id in cluster.workers) {
-        if (animeList.length > 0) {
-          cluster.workers[id].send(animeList.pop());
-        }
-      }
-      if (!res.Page.pageInfo.hasNextPage) break;
-      page++;
-    }
-    finished = true;
-    console.log("Crawling complete");
-  } else {
-    console.log("Usage: node index.js --anime 1");
-    console.log("       node index.js --page 1");
-    console.log("       node index.js --page 1-");
-    console.log("       node index.js --page 1-2");
+    console.log(`Finished page ${page}`);
+    if (!data.Page.pageInfo.hasNextPage) break;
+    page++;
   }
+  console.log(`Crawling complete. Files saved to ${OUTPUT_DIR}`);
 } else {
-  process.on("message", async (anime) => {
-    await fs.writeFile(path.join(OUTPUT_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
-
-    process.send(anime);
-  });
+  console.log("Usage: node index.js --anime 1");
+  console.log("       node index.js --page 1");
+  console.log("       node index.js --page 1-");
+  console.log("       node index.js --page 1-2");
 }
