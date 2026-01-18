@@ -2,13 +2,13 @@
   "name": "anilist-crawler",
   "version": "1.3.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
   "type": "module",
   "scripts": {
     "prettier": "prettier",
-    "format": "prettier --write \"**/*.js\"",
-    "lint": "prettier --check \"**/*.js\"",
-    "test": "prettier --check \"**/*.js\""
+    "format": "prettier --write \"**/*.ts\"",
+    "lint": "prettier --check \"**/*.ts\"",
+    "test": "prettier --check \"**/*.ts\""
   },
   "repository": {
     "type": "git",
@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/soruly/anilist-crawler#readme",
   "devDependencies": {
+    "@types/node": "^25.0.9",
     "prettier": "^3.8.0"
   }
 }

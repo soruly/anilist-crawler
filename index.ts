@@ -3,8 +3,10 @@ import fs from "node:fs/promises";
 
 const OUTPUT_DIR = "anilist_anime";
 
-const q = {};
-q.query = await fs.readFile("query.graphql", "utf8");
+const q = {
+  query: await fs.readFile("query.graphql", "utf8"),
+  variables: {},
+};
 
 const submitQuery = async (query, variables) => {
   query.variables = variables;
@@ -42,7 +44,7 @@ if (arg === "--anime" && value) {
   console.log(`Saved anime ${anime.id} to ${path.join(OUTPUT_DIR, `${anime.id}.json`)}`);
 } else if (arg === "--page" && value) {
   const format = /^(\d+)(-)?(\d+)?$/;
-  const startPage = value.match(format)[1];
+  const startPage = Number(value.match(format)[1]);
   const lastPage = value.match(format)[2] ? Number(value.match(format)[3]) : startPage;
 
   console.log(`Crawling page ${startPage} to ${lastPage || "end"}`);
@@ -64,8 +66,8 @@ if (arg === "--anime" && value) {
   }
   console.log(`Crawling complete. Files saved to ${OUTPUT_DIR}`);
 } else {
-  console.log("Usage: node index.js --anime 1");
-  console.log("       node index.js --page 1");
-  console.log("       node index.js --page 1-");
-  console.log("       node index.js --page 1-2");
+  console.log("Usage: node index.ts --anime 1");
+  console.log("       node index.ts --page 1");
+  console.log("       node index.ts --page 1-");
+  console.log("       node index.ts --page 1-2");
 }
