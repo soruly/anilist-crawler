@@ -179,16 +179,6 @@ query ($page: Int = 1, $perPage: Int = 1, $id: Int, $type: MediaType = ANIME) {
         allTime
         context
       }
-      rankings {
-        id
-        rank
-        type
-        format
-        year
-        season
-        allTime
-        context
-      }
       recommendations {
         edges {
           node {
