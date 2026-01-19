@@ -3,17 +3,13 @@ import fs from "node:fs/promises";
 
 const OUTPUT_DIR = "anilist_anime";
 
-const q = {
-  query: await fs.readFile("query.graphql", "utf8"),
-  variables: {},
-};
+const query = await fs.readFile("query.graphql", "utf8");
 
-const submitQuery = async (query, variables) => {
-  query.variables = variables;
+const submitQuery = async (variables) => {
   for (let retry = 0; retry < 5; retry++) {
     const res = await fetch("https://graphql.anilist.co/", {
       method: "POST",
-      body: JSON.stringify(query),
+      body: JSON.stringify({ query, variables }),
       headers: { "Content-Type": "application/json" },
     });
     if (res.status === 200) {
@@ -38,7 +34,7 @@ await fs.mkdir(OUTPUT_DIR, { recursive: true });
 const [arg, value] = process.argv.slice(2);
 if (arg === "--anime" && value) {
   console.log(`Crawling anime ${value}`);
-  const anime = (await submitQuery(q, { id: value })).Page.media[0];
+  const anime = (await submitQuery({ id: value })).Page.media[0];
   console.log(`Saving anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
   await fs.writeFile(path.join(OUTPUT_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
   console.log(`Saved anime ${anime.id} to ${path.join(OUTPUT_DIR, `${anime.id}.json`)}`);
@@ -52,10 +48,7 @@ if (arg === "--anime" && value) {
   let page = startPage;
   while (!lastPage || page <= lastPage) {
     console.log(`Crawling page ${page}`);
-    const data = await submitQuery(q, {
-      page,
-      perPage: 50,
-    });
+    const data = await submitQuery({ page, perPage: 50 });
     await Promise.all(
       data.Page.media.map(async (anime) => {
         console.log(`Saving anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
