@@ -56,10 +56,15 @@ if (arg === "--anime" && value) {
       page,
       perPage: 50,
     });
-    for (const anime of data.Page.media) {
-      console.log(`Saving anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
-      await fs.writeFile(path.join(OUTPUT_DIR, `${anime.id}.json`), JSON.stringify(anime, null, 2));
-    }
+    await Promise.all(
+      data.Page.media.map(async (anime) => {
+        console.log(`Saving anime ${anime.id} (${anime.title.native ?? anime.title.romaji})`);
+        await fs.writeFile(
+          path.join(OUTPUT_DIR, `${anime.id}.json`),
+          JSON.stringify(anime, null, 2),
+        );
+      }),
+    );
     console.log(`Finished page ${page}`);
     if (!data.Page.pageInfo.hasNextPage) break;
     page++;
