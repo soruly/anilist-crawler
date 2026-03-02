@@ -21,7 +21,7 @@
     "test": "oxfmt --check \"**/*.*\""
   },
   "devDependencies": {
-    "@types/node": "^25.3.2",
+    "@types/node": "^25.3.3",
     "oxfmt": "^0.35.0"
   }
 }
