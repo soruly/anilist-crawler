@@ -15,13 +15,14 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "oxfmt": "oxfmt",
-    "format": "oxfmt --write \"**/*.*\"",
-    "lint": "oxfmt --check \"**/*.*\"",
-    "test": "oxfmt --check \"**/*.*\""
+    "format": "oxfmt",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "test": "oxfmt --check && oxlint"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
-    "oxfmt": "^0.63.0"
+    "@types/node": "^26.5.1",
+    "oxfmt": "^0.67.0",
+    "oxlint": "^1.82.0"
   }
 }
