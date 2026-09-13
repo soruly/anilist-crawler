@@ -5,6 +5,11 @@
 
 Crawl data from [AniList](https://anilist.co/home) API and store as json file.
 
+> **Repository Archived**
+>
+> AniList has suspended its public API service due to huge increase in traffic. To prevent abuse and ensure stability for its users, I have archived this repository and it is no longer maintained.
+> You can find more information here: https://anilist.co/forum/thread/92613
+
 ## Requirements
 
 - Node.js >= 22.18
